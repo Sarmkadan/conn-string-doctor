@@ -1,8 +1,7 @@
+#nullable enable
+
 namespace ConnStringDoctor;
 
-/// <summary>
-/// Interface for diagnostic checks that analyze connection strings.
-/// </summary>
 internal interface IDiagnosticCheck
 {
     /// <summary>
@@ -13,10 +12,8 @@ internal interface IDiagnosticCheck
     /// <summary>
     /// Runs the diagnostic check asynchronously.
     /// </summary>
-    /// <param name="connectionString">The connection string to analyze.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Diagnostic result with analysis.</returns>
-    ValueTask<DiagnosticResult> RunAsync(
-        string connectionString,
-        CancellationToken cancellationToken = default);
+    /// <param name="info">Parsed connection string information.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A task that resolves to a <see cref="DiagnosticResult"/>.</returns>
+    Task<DiagnosticResult> RunAsync(ConnectionStringInfo info, CancellationToken ct);
 }
