@@ -10,19 +10,14 @@ public static class ConnectionStringInfoExtensions
     /// </summary>
     /// <param name="info">The connection string information.</param>
     /// <returns>The normalized server endpoint string.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="info"/> is <see langword="null"/>.</exception>
     public static string GetServerEndpoint(this ConnectionStringInfo info)
     {
-        if (string.IsNullOrEmpty(info.Server))
-        {
-            return string.Empty;
-        }
+        ArgumentNullException.ThrowIfNull(info);
 
-        if (info.Port.HasValue && info.Port.Value > 0)
-        {
-            return $"{info.Server}:{info.Port.Value}";
-        }
-
-        return info.Server;
+        return info.Port.HasValue && info.Port.Value > 0
+            ? $"{info.Server}:{info.Port.Value}"
+            : info.Server ?? string.Empty;
     }
 
     /// <summary>
@@ -30,13 +25,18 @@ public static class ConnectionStringInfoExtensions
     /// </summary>
     /// <param name="info">The connection string information.</param>
     /// <returns>True if the database is local; otherwise, false.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="info"/> is <see langword="null"/>.</exception>
     public static bool IsLocalDatabase(this ConnectionStringInfo info)
     {
+        ArgumentNullException.ThrowIfNull(info);
+
         return info.Provider == DbProvider.Sqlite ||
-               (info.Provider == DbProvider.SqlServer &&
-                (string.Equals(info.Server, "localhost", StringComparison.OrdinalIgnoreCase) ||
-                 string.Equals(info.Server, "127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
-                 string.IsNullOrEmpty(info.Server)));
+            (info.Provider == DbProvider.SqlServer &&
+            (info.Server is null ||
+            string.Equals(info.Server, "localhost", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(info.Server, "127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(info.Server, "::1", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(info.Server, ".", StringComparison.OrdinalIgnoreCase)));
     }
 
     /// <summary>
@@ -44,8 +44,11 @@ public static class ConnectionStringInfoExtensions
     /// </summary>
     /// <param name="info">The connection string information.</param>
     /// <returns>A sanitized connection string without password.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="info"/> is <see langword="null"/>.</exception>
     public static string ToSanitizedString(this ConnectionStringInfo info)
     {
+        ArgumentNullException.ThrowIfNull(info);
+
         var sb = new System.Text.StringBuilder();
         sb.Append($"Provider={info.Provider}");
 
@@ -84,8 +87,11 @@ public static class ConnectionStringInfoExtensions
     /// </summary>
     /// <param name="info">The connection string information.</param>
     /// <returns>True if authentication is required; otherwise, false.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="info"/> is <see langword="null"/>.</exception>
     public static bool RequiresAuthentication(this ConnectionStringInfo info)
     {
+        ArgumentNullException.ThrowIfNull(info);
+
         return !string.IsNullOrEmpty(info.User) && !string.IsNullOrEmpty(info.Password);
     }
 }
