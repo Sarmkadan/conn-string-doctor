@@ -70,16 +70,16 @@ Generates the final formatted connection string based on the accumulated configu
 The following example demonstrates constructing a standard connection string with explicit credentials, a specific timeout, and SSL enabled.
 
 ```csharp
-var connectionString = FluentConnectionStringBuilder.For
+var connectionString = FluentConnectionStringBuilder.For("sqlserver")
     .WithHost("sql-prod-01.internal")
     .WithDatabase("InventoryDb")
     .WithCredentials("app_user", "SecurePassword123!")
     .WithSsl()
     .WithTimeout(30)
-    .WithPooling(true)
-    .Build;
+    .WithPooling(1, 100)
+    .Build();
 
-// Output: "Server=sql-prod-01.internal;Database=InventoryDb;User ID=app_user;Password=SecurePassword123!;Encrypt=True;Connect Timeout=30;Pooling=true;"
+// Output: "Server=sql-prod-01.internal;Database=InventoryDb;User Id=app_user;Password=SecurePassword123!;Encrypt=True;TrustServerCertificate=False;Pooling=True;Min Pool Size=1;Max Pool Size=100;Connection Timeout=30"
 ```
 
 ### Windows Authentication with Custom Options

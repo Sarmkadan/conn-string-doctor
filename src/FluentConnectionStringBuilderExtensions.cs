@@ -5,6 +5,9 @@ using System.Collections.Generic;
 
 namespace ConnStringDoctor
 {
+    /// <summary>
+    /// Provides convenience extension methods for <see cref="FluentConnectionStringBuilder"/>.
+    /// </summary>
     public static class FluentConnectionStringBuilderExtensions
     {
         /// <summary>
@@ -50,7 +53,8 @@ namespace ConnStringDoctor
                 throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout exceeds maximum allowed value.");
             }
 
-            return builder.WithTimeout((int)timeout.TotalSeconds);
+            // Round up so sub-second timeouts do not truncate to zero.
+            return builder.WithTimeout((int)Math.Ceiling(timeout.TotalSeconds));
         }
 
         /// <summary>
