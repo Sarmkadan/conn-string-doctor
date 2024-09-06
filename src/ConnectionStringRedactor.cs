@@ -68,7 +68,7 @@ namespace ConnStringDoctor
 
                 return builder.ConnectionString;
             }
-            catch
+            catch (ArgumentException)
             {
                 // If parsing fails, return the original string unchanged.
                 return connectionString;
@@ -102,7 +102,7 @@ namespace ConnStringDoctor
 
                 return builder.ConnectionString;
             }
-            catch
+            catch (ArgumentException)
             {
                 return connectionString;
             }
@@ -133,7 +133,7 @@ namespace ConnStringDoctor
 
                 return false;
             }
-            catch
+            catch (ArgumentException)
             {
                 // If parsing fails, assume no secrets were detected.
                 return false;

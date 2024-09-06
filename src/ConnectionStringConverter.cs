@@ -1,25 +1,64 @@
+using System.Data.Common;
+
 namespace ConnStringDoctor;
 
+/// <summary>
+/// Converts connection strings between provider dialects (SQL Server, PostgreSQL, MySQL, SQLite)
+/// by translating well-known keywords to their target provider equivalents.
+/// </summary>
 public sealed class ConnectionStringConverter
 {
+    /// <summary>
+    /// Holds the parsed parts of a connection string together with its source provider name.
+    /// </summary>
     public sealed class ConnectionStringInfo
     {
+        /// <summary>Gets or sets the source provider name (e.g. "sqlserver", "postgres").</summary>
         public string Provider { get; set; } = string.Empty;
+
+        /// <summary>Gets or sets the original key/value pairs of the connection string.</summary>
         public IReadOnlyDictionary<string, string> OriginalParts { get; set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Parses a connection string into its key/value parts using ADO.NET quoting rules.
+    /// The provider is left empty; set <see cref="ConnectionStringInfo.Provider"/> before converting.
+    /// </summary>
+    /// <param name="connectionString">The connection string to parse; may be null or empty.</param>
+    /// <returns>The parsed connection string information.</returns>
     public static ConnectionStringInfo Parse(string connectionString)
     {
         var parts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var provider = string.Empty;
 
         if (string.IsNullOrWhiteSpace(connectionString))
         {
-            return new ConnectionStringInfo { Provider = provider, OriginalParts = parts.AsReadOnly() };
+            return new ConnectionStringInfo { Provider = string.Empty, OriginalParts = parts.AsReadOnly() };
         }
 
-        var segments = connectionString.Split(';');
-        foreach (var segment in segments)
+        try
+        {
+            var builder = new DbConnectionStringBuilder
+            {
+                ConnectionString = connectionString
+            };
+
+            foreach (string key in builder.Keys.Cast<string>())
+            {
+                parts[key] = builder[key]?.ToString() ?? string.Empty;
+            }
+        }
+        catch (ArgumentException)
+        {
+            // Not parseable under strict ADO.NET rules; fall back to a plain split.
+            ParseSegments(connectionString, parts);
+        }
+
+        return new ConnectionStringInfo { Provider = string.Empty, OriginalParts = parts.AsReadOnly() };
+    }
+
+    private static void ParseSegments(string connectionString, Dictionary<string, string> parts)
+    {
+        foreach (var segment in connectionString.Split(';'))
         {
             var trimmed = segment.Trim();
             if (string.IsNullOrEmpty(trimmed))
@@ -30,13 +69,11 @@ public sealed class ConnectionStringConverter
             var equalIndex = trimmed.IndexOf('=');
             if (equalIndex > 0)
             {
-                var key = trimmed.Substring(0, equalIndex).Trim();
-                var value = trimmed.Substring(equalIndex + 1).Trim();
+                var key = trimmed[..equalIndex].Trim();
+                var value = trimmed[(equalIndex + 1)..].Trim();
                 parts[key] = value;
             }
         }
-
-        return new ConnectionStringInfo { Provider = provider, OriginalParts = parts.AsReadOnly() };
     }
 
     private static readonly IReadOnlyDictionary<string, string> SqlServerToPostgres = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -98,12 +135,17 @@ public sealed class ConnectionStringConverter
         ["Mode"] = "Mode"
     };
 
+    /// <summary>
+    /// Converts the parsed connection string parts to the dialect of the target provider.
+    /// </summary>
+    /// <param name="source">The parsed source connection string, including its provider name.</param>
+    /// <param name="targetProvider">The target provider name (e.g. "postgres", "mysql", "sqlserver").</param>
+    /// <returns>The conversion result with the rewritten connection string, unmapped keys, and warnings.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="targetProvider"/> is null, empty, or whitespace.</exception>
     public ConversionResult Convert(ConnectionStringInfo source, string targetProvider)
     {
-        if (source is null)
-        {
-            throw new ArgumentNullException(nameof(source));
-        }
+        ArgumentNullException.ThrowIfNull(source);
 
         if (string.IsNullOrWhiteSpace(targetProvider))
         {
@@ -111,10 +153,22 @@ public sealed class ConnectionStringConverter
         }
 
         var target = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        // Same provider: pass everything through unchanged.
+        if (string.Equals(source.Provider?.Trim(), targetProvider.Trim(), StringComparison.OrdinalIgnoreCase))
+        {
+            foreach (var kvp in source.OriginalParts)
+            {
+                target[kvp.Key] = kvp.Value;
+            }
+
+            return new ConversionResult(BuildConnectionString(target), Array.Empty<string>(), Array.Empty<string>());
+        }
+
         var unmappedKeys = new List<string>();
         var warnings = new List<string>();
 
-        var mappings = GetMappings(source.Provider, targetProvider);
+        var mappings = GetMappings(source.Provider ?? string.Empty, targetProvider);
 
         foreach (var kvp in source.OriginalParts)
         {
@@ -132,7 +186,7 @@ public sealed class ConnectionStringConverter
             }
         }
 
-        HandleCommonMappings(source, target, warnings);
+        HandleCommonMappings(source, target);
 
         var connectionString = BuildConnectionString(target);
 
@@ -220,60 +274,33 @@ public sealed class ConnectionStringConverter
                !IsSqliteProvider(provider);
     }
 
-    private static void HandleCommonMappings(ConnectionStringInfo source, Dictionary<string, string> target, List<string> warnings)
+    private static void HandleCommonMappings(ConnectionStringInfo source, Dictionary<string, string> target)
     {
-        if (!target.ContainsKey("Server") && source.OriginalParts.TryGetValue("Server", out var serverValue))
+        // Fallbacks for widely shared keywords that the provider-specific mapping did not cover.
+        // A fallback is skipped when the target already carries the value under any synonym,
+        // so a mapped key (e.g. "Host") is never duplicated as "Server".
+        AddFallback(source, target, "Server", "Server", "Data Source", "Host");
+        AddFallback(source, target, "Database", "Database", "Initial Catalog");
+        AddFallback(source, target, "User ID", "User ID", "User", "Username", "Uid");
+        AddFallback(source, target, "Password", "Password", "Pwd");
+        AddFallback(source, target, "Port", "Port");
+        AddFallback(source, target, "Encrypt", "Encrypt", "SSL Mode", "SslMode", "Trust Server Certificate");
+    }
+
+    private static void AddFallback(ConnectionStringInfo source, Dictionary<string, string> target, string targetKey, params string[] synonyms)
+    {
+        if (target.ContainsKey(targetKey) || synonyms.Any(target.ContainsKey))
         {
-            target["Server"] = serverValue;
-        }
-        else if (!target.ContainsKey("Server") && source.OriginalParts.TryGetValue("Host", out var hostValue))
-        {
-            target["Server"] = hostValue;
+            return;
         }
 
-        if (!target.ContainsKey("Database") && source.OriginalParts.TryGetValue("Database", out var dbValue))
+        foreach (var synonym in synonyms)
         {
-            target["Database"] = dbValue;
-        }
-        else if (!target.ContainsKey("Database") && source.OriginalParts.TryGetValue("Initial Catalog", out var catalogValue))
-        {
-            target["Database"] = catalogValue;
-        }
-
-        if (!target.ContainsKey("User ID") && source.OriginalParts.TryGetValue("User ID", out var userIdValue))
-        {
-            target["User ID"] = userIdValue;
-        }
-        else if (!target.ContainsKey("User ID") && source.OriginalParts.TryGetValue("User", out var userValue))
-        {
-            target["User ID"] = userValue;
-        }
-        else if (!target.ContainsKey("User ID") && source.OriginalParts.TryGetValue("Username", out var usernameValue))
-        {
-            target["User ID"] = usernameValue;
-        }
-
-        if (!target.ContainsKey("Password") && source.OriginalParts.TryGetValue("Password", out var passwordValue))
-        {
-            target["Password"] = passwordValue;
-        }
-
-        if (!target.ContainsKey("Port") && source.OriginalParts.TryGetValue("Port", out var portValue))
-        {
-            target["Port"] = portValue;
-        }
-
-        if (!target.ContainsKey("Encrypt") && source.OriginalParts.TryGetValue("Encrypt", out var encryptValue))
-        {
-            target["Encrypt"] = encryptValue;
-        }
-        else if (!target.ContainsKey("Encrypt") && source.OriginalParts.TryGetValue("SSL Mode", out var sslModeValue))
-        {
-            target["Encrypt"] = sslModeValue;
-        }
-        else if (!target.ContainsKey("Encrypt") && source.OriginalParts.TryGetValue("Trust Server Certificate", out var trustCertValue))
-        {
-            target["Encrypt"] = trustCertValue;
+            if (source.OriginalParts.TryGetValue(synonym, out var value))
+            {
+                target[targetKey] = value;
+                return;
+            }
         }
     }
 
@@ -284,40 +311,38 @@ public sealed class ConnectionStringConverter
             return string.Empty;
         }
 
-        var sb = new System.Text.StringBuilder();
-        var first = true;
-
+        // DbConnectionStringBuilder applies standard ADO.NET quoting for values
+        // containing separators, quotes, or leading/trailing whitespace.
+        var builder = new DbConnectionStringBuilder();
         foreach (var kvp in parts.OrderBy(kvp => kvp.Key, StringComparer.OrdinalIgnoreCase))
         {
-            if (!first)
-            {
-                sb.Append(';');
-            }
-            first = false;
-
-            sb.Append(kvp.Key).Append('=').Append(EscapeValue(kvp.Value));
+            builder[kvp.Key] = kvp.Value;
         }
 
-        return sb.ToString();
-    }
-
-    private static string EscapeValue(string value)
-    {
-        if (value is null)
-        {
-            return string.Empty;
-        }
-
-        return value.Replace("\\", "\\\\").Replace("=", "\\=").Replace(";", "\\;");
+        return builder.ConnectionString;
     }
 }
 
+/// <summary>
+/// Represents the outcome of a connection string conversion.
+/// </summary>
 public sealed class ConversionResult
 {
+    /// <summary>Gets the converted connection string.</summary>
     public string ConnectionString { get; }
+
+    /// <summary>Gets the source keys that had no mapping for the target provider.</summary>
     public IReadOnlyList<string> UnmappedKeys { get; }
+
+    /// <summary>Gets the warnings produced during conversion.</summary>
     public IReadOnlyList<string> Warnings { get; }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ConversionResult"/> class.
+    /// </summary>
+    /// <param name="connectionString">The converted connection string; null is treated as empty.</param>
+    /// <param name="unmappedKeys">The keys that could not be mapped; null is treated as empty.</param>
+    /// <param name="warnings">The conversion warnings; null is treated as empty.</param>
     public ConversionResult(string connectionString, IReadOnlyList<string> unmappedKeys, IReadOnlyList<string> warnings)
     {
         ConnectionString = connectionString ?? string.Empty;

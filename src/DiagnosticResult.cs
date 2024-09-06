@@ -47,7 +47,7 @@ internal sealed class DiagnosticResult
     /// <summary>
     /// Gets whether the diagnostic check passed without errors or warnings.
     /// </summary>
-    public bool IsSuccess => !_errors.Any() && !_warnings.Any();
+    public bool IsSuccess => _errors.Count == 0 && _warnings.Count == 0;
 
     /// <summary>
     /// Sets the message for the diagnostic result.

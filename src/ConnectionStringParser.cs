@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace ConnStringDoctor;
 
 /// <summary>
@@ -179,7 +181,7 @@ public static class ConnectionStringParser
         // Handle port explicitly
         else if (_portKeywords.Contains(normalizedKey))
         {
-            if (int.TryParse(value, out int port))
+            if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int port))
             {
                 result.Port = port;
             }
@@ -200,42 +202,48 @@ public static class ConnectionStringParser
     }
 
     /// <summary>
-    /// Extracts host and port from a value in format "host,port" or "host:port".
+    /// Extracts host and port from a value in format "host,port", "host:port", or "[ipv6]:port".
     /// </summary>
     private static string ExtractHostAndPort(string value, out int? port)
     {
         port = null;
 
-        // Check for comma-separated port
+        // Comma-separated port (SQL Server style): "host,port"
         int commaIndex = value.IndexOf(',');
         if (commaIndex >= 0)
         {
-            string hostPart = value[..commaIndex];
-            string portPart = value[(commaIndex + 1)..];
-
-            if (int.TryParse(portPart, out int portValue))
+            if (int.TryParse(value[(commaIndex + 1)..], NumberStyles.Integer, CultureInfo.InvariantCulture, out int portValue))
             {
                 port = portValue;
             }
-            return hostPart;
+            return value[..commaIndex].Trim();
         }
 
-        // Check for colon-separated port (IPv6 compatible)
-        int colonIndex = value.LastIndexOf(':');
-        if (colonIndex > 0 && colonIndex < value.Length - 1)
+        // Bracketed IPv6 address with optional port: "[2001:db8::1]:5432"
+        if (value.StartsWith('['))
         {
-            // Don't match IPv6 addresses like [2001:db8::1]:port
-            if (value[0] != '[')
+            int closeIndex = value.IndexOf(']');
+            if (closeIndex > 0)
             {
-                string hostPart = value[..colonIndex];
-                string portPart = value[(colonIndex + 1)..];
-
-                if (int.TryParse(portPart, out int portValue))
+                if (closeIndex + 2 < value.Length && value[closeIndex + 1] == ':' &&
+                    int.TryParse(value[(closeIndex + 2)..], NumberStyles.Integer, CultureInfo.InvariantCulture, out int v6Port))
                 {
-                    port = portValue;
+                    port = v6Port;
                 }
-                return hostPart;
+                return value[1..closeIndex];
             }
+
+            return value;
+        }
+
+        // Colon-separated port: only when the value contains a single colon,
+        // so raw IPv6 addresses like "2001:db8::1" are left intact.
+        int colonIndex = value.IndexOf(':');
+        if (colonIndex > 0 && colonIndex < value.Length - 1 && colonIndex == value.LastIndexOf(':') &&
+            int.TryParse(value[(colonIndex + 1)..], NumberStyles.Integer, CultureInfo.InvariantCulture, out int hostPort))
+        {
+            port = hostPort;
+            return value[..colonIndex];
         }
 
         return value;
@@ -248,19 +256,17 @@ public static class ConnectionStringParser
     {
         bool hasServer = !string.IsNullOrEmpty(result.Server);
         bool hasDatabase = !string.IsNullOrEmpty(result.Database);
-        bool hasSqlServerKeywords = result.Properties.Keys.Any(k => _sqlServerKeywords.Contains(k));
-        bool hasDatabaseKeywords = result.Properties.Keys.Any(k => _databaseKeywords.Contains(k));
 
         // Check for Sqlite by file extension
-        if (hasServer && (result.Server?.EndsWith(".db", StringComparison.OrdinalIgnoreCase) == true ||
-                          result.Server?.EndsWith(".sqlite", StringComparison.OrdinalIgnoreCase) == true ||
-                          result.Server?.EndsWith(".db3", StringComparison.OrdinalIgnoreCase) == true))
+        if (hasServer && (result.Server!.EndsWith(".db", StringComparison.OrdinalIgnoreCase) ||
+                          result.Server.EndsWith(".sqlite", StringComparison.OrdinalIgnoreCase) ||
+                          result.Server.EndsWith(".db3", StringComparison.OrdinalIgnoreCase)))
         {
             result.Provider = DbProvider.Sqlite;
             return;
         }
 
-        // Check for PostgreSql by port (default 5432) or keywords
+        // Check for PostgreSql by default port or keywords
         if (hasServer && result.Port == 5432)
         {
             result.Provider = DbProvider.PostgreSql;
@@ -273,28 +279,27 @@ public static class ConnectionStringParser
             return;
         }
 
-        // Check for MySql by keywords
+        // Check for MySql by default port or keywords
+        if (hasServer && result.Port == 3306)
+        {
+            result.Provider = DbProvider.MySql;
+            return;
+        }
+
         if (result.Properties.Keys.Any(k => k.Contains("mysql", StringComparison.OrdinalIgnoreCase)))
         {
             result.Provider = DbProvider.MySql;
             return;
         }
 
-        // Default to SqlServer if we have server and database keywords
-        if (hasServer && hasDatabase && (hasSqlServerKeywords || hasDatabaseKeywords))
+        // Default to SqlServer when server or database information is present:
+        // the recognized keywords ("Server", "Initial Catalog", ...) are SQL Server syntax.
+        if (hasServer || hasDatabase)
         {
             result.Provider = DbProvider.SqlServer;
             return;
         }
 
-        // Check for SqlServer by keywords
-        if (hasSqlServerKeywords || hasDatabaseKeywords)
-        {
-            result.Provider = DbProvider.SqlServer;
-            return;
-        }
-
-        // Default to unknown
         result.Provider = DbProvider.Unknown;
     }
 

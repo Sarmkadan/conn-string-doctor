@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -12,15 +13,19 @@ namespace ConnStringDoctor;
 /// </summary>
 internal sealed class DnsAndTcpCheck : IDiagnosticCheck
 {
+    private static readonly TimeSpan _connectTimeout = TimeSpan.FromSeconds(5);
+
     /// <inheritdoc />
     public string Name => "Reachability";
 
     /// <inheritdoc />
     public async Task<DiagnosticResult> RunAsync(ConnectionStringInfo info, CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(info);
+
         var result = new DiagnosticResult(Name);
 
-        // Skip check for SQLite provider
+        // SQLite is file based; there is nothing to resolve or connect to.
         if (info.Provider == DbProvider.Sqlite)
         {
             return result;
@@ -34,10 +39,14 @@ internal sealed class DnsAndTcpCheck : IDiagnosticCheck
 
         // DNS resolution with timing
         var dnsStopwatch = Stopwatch.StartNew();
-        IPAddress[]? addresses = null;
+        IPAddress[] addresses;
         try
         {
-            addresses = await Dns.GetHostAddressesAsync(info.Server).ConfigureAwait(false);
+            addresses = await Dns.GetHostAddressesAsync(info.Server, ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -46,36 +55,46 @@ internal sealed class DnsAndTcpCheck : IDiagnosticCheck
         }
         dnsStopwatch.Stop();
 
+        if (addresses.Length == 0)
+        {
+            result.AddError($"DNS resolution returned no addresses for '{info.Server}'.");
+            return result;
+        }
+
         if (dnsStopwatch.Elapsed > TimeSpan.FromSeconds(1))
         {
-            result.AddWarning($"DNS resolution took {dnsStopwatch.Elapsed.TotalSeconds:F2}s.");
+            result.AddWarning(string.Create(CultureInfo.InvariantCulture, $"DNS resolution took {dnsStopwatch.Elapsed.TotalSeconds:F2}s."));
         }
 
         // Determine port
         int port = info.Port ?? ConnectionStringParser.DefaultPort(info.Provider);
+        if (port <= 0)
+        {
+            result.AddWarning("No port specified and no default port is known for the provider; skipping TCP check.");
+            return result;
+        }
 
         // TCP connection with timeout
         using var client = new TcpClient();
-        var connectTask = client.ConnectAsync(info.Server, port);
-        var timeoutTask = Task.Delay(TimeSpan.FromSeconds(5), ct);
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(_connectTimeout);
 
-        var completedTask = await Task.WhenAny(connectTask, timeoutTask).ConfigureAwait(false);
-
-        if (completedTask == timeoutTask)
+        try
         {
-            result.AddError("Connection timed out after 5 seconds. Проверь firewall/VPN/port.");
+            await client.ConnectAsync(info.Server, port, timeoutCts.Token).ConfigureAwait(false);
+            // Connection succeeded - nothing to report
         }
-        else
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
-            try
-            {
-                await connectTask.ConfigureAwait(false);
-                // Connection succeeded – nothing to report
-            }
-            catch (Exception ex)
-            {
-                result.AddError($"TCP connection failed: {ex.Message}. Проверь firewall/VPN/port.");
-            }
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            result.AddError($"Connection timed out after {(int)_connectTimeout.TotalSeconds} seconds. Check firewall, VPN, and port settings.");
+        }
+        catch (Exception ex) when (ex is SocketException or ArgumentException)
+        {
+            result.AddError($"TCP connection failed: {ex.Message}. Check firewall, VPN, and port settings.");
         }
 
         return result;
