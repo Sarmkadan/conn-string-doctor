@@ -10,15 +10,15 @@ namespace ConnStringDoctor
         /// <summary>
         /// Adds multiple options to the connection string builder in a single call.
         /// </summary>
-        /// <param name="builder">The connection string builder</param>
-        /// <param name="options">Dictionary of key-value pairs to add</param>
-        /// <returns>The same builder instance for fluent chaining</returns>
+        /// <param name="builder">The connection string builder.</param>
+        /// <param name="options">Dictionary of key-value pairs to add.</param>
+        /// <returns>The same builder instance for fluent chaining.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
         public static FluentConnectionStringBuilder WithOptions(this FluentConnectionStringBuilder builder, Dictionary<string, string> options)
         {
-            if (options == null)
-            {
-                throw new ArgumentNullException(nameof(options));
-            }
+            ArgumentNullException.ThrowIfNull(builder);
+            ArgumentNullException.ThrowIfNull(options);
 
             foreach (var option in options)
             {
@@ -31,19 +31,23 @@ namespace ConnStringDoctor
         /// <summary>
         /// Sets the connection timeout to a specific time span.
         /// </summary>
-        /// <param name="builder">The connection string builder</param>
-        /// <param name="timeout">The timeout value</param>
-        /// <returns>The same builder instance for fluent chaining</returns>
+        /// <param name="builder">The connection string builder.</param>
+        /// <param name="timeout">The timeout value.</param>
+        /// <returns>The same builder instance for fluent chaining.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="timeout"/> is not positive or exceeds maximum allowed value.</exception>
         public static FluentConnectionStringBuilder WithTimeout(this FluentConnectionStringBuilder builder, TimeSpan timeout)
         {
+            ArgumentNullException.ThrowIfNull(builder);
+
             if (timeout.TotalSeconds <= 0)
             {
-                throw new ArgumentException("Timeout must be positive.", nameof(timeout));
+                throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout must be positive.");
             }
 
             if (timeout.TotalSeconds > int.MaxValue)
             {
-                throw new ArgumentException("Timeout exceeds maximum allowed value.", nameof(timeout));
+                throw new ArgumentOutOfRangeException(nameof(timeout), "Timeout exceeds maximum allowed value.");
             }
 
             return builder.WithTimeout((int)timeout.TotalSeconds);
@@ -52,14 +56,18 @@ namespace ConnStringDoctor
         /// <summary>
         /// Sets the pooling configuration with a single timeout value for both min and max pool size.
         /// </summary>
-        /// <param name="builder">The connection string builder</param>
-        /// <param name="poolSize">The pool size (min and max will be set to this value)</param>
-        /// <returns>The same builder instance for fluent chaining</returns>
+        /// <param name="builder">The connection string builder.</param>
+        /// <param name="poolSize">The pool size (min and max will be set to this value).</param>
+        /// <returns>The same builder instance for fluent chaining.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentOutOfRangeException"><paramref name="poolSize"/> is not positive.</exception>
         public static FluentConnectionStringBuilder WithPoolSize(this FluentConnectionStringBuilder builder, int poolSize)
         {
+            ArgumentNullException.ThrowIfNull(builder);
+
             if (poolSize <= 0)
             {
-                throw new ArgumentException("Pool size must be positive.", nameof(poolSize));
+                throw new ArgumentOutOfRangeException(nameof(poolSize), "Pool size must be positive.");
             }
 
             return builder.WithPooling(poolSize, poolSize);
@@ -68,15 +76,15 @@ namespace ConnStringDoctor
         /// <summary>
         /// Sets the database name from a connection string URI format (e.g., "Server=localhost;Database=mydb").
         /// </summary>
-        /// <param name="builder">The connection string builder</param>
-        /// <param name="databaseName">The database name to extract from the URI</param>
-        /// <returns>The same builder instance for fluent chaining</returns>
+        /// <param name="builder">The connection string builder.</param>
+        /// <param name="databaseName">The database name to extract from the URI or use directly.</param>
+        /// <returns>The same builder instance for fluent chaining.</returns>
+        /// <exception cref="ArgumentNullException"><paramref name="builder"/> is <see langword="null"/>.</exception>
+        /// <exception cref="ArgumentException"><paramref name="databaseName"/> is <see langword="null"/>, empty, or consists only of whitespace.</exception>
         public static FluentConnectionStringBuilder WithDatabaseFromUri(this FluentConnectionStringBuilder builder, string databaseName)
         {
-            if (string.IsNullOrWhiteSpace(databaseName))
-            {
-                throw new ArgumentException("Database name cannot be null or whitespace.", nameof(databaseName));
-            }
+            ArgumentNullException.ThrowIfNull(builder);
+            ArgumentException.ThrowIfNullOrWhiteSpace(databaseName);
 
             // Extract database name from URI format (e.g., "mydb" from "Server=localhost;Database=mydb")
             var parts = databaseName.Split(new[] { ';', '=' }, StringSplitOptions.RemoveEmptyEntries);
