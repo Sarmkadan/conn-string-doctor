@@ -27,6 +27,7 @@ public static class FluentConnectionStringBuilderJsonExtensions
     /// <param name="indented">Whether to format the JSON with indentation for readability.</param>
     /// <returns>A JSON representation of the connection string builder configuration.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="value"/> is <see langword="null"/>.</exception>
+    /// <remarks>This method uses the <see cref="JsonSerializer"/> to serialize the builder's state.</remarks>
     public static string ToJson(this FluentConnectionStringBuilder value, bool indented = false)
     {
         ArgumentNullException.ThrowIfNull(value);
@@ -43,6 +44,7 @@ public static class FluentConnectionStringBuilderJsonExtensions
     /// A <see cref="FluentConnectionStringBuilder"/> instance if the JSON is valid and contains a provider;
     /// otherwise, <see langword="null"/>.
     /// </returns>
+    /// <remarks>This method uses the <see cref="JsonSerializer"/> to deserialize the JSON into a builder state.</remarks>
     public static FluentConnectionStringBuilder? FromJson(string json)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -70,6 +72,7 @@ public static class FluentConnectionStringBuilderJsonExtensions
     /// <param name="json">The JSON string to deserialize.</param>
     /// <param name="value">Receives the deserialized builder if successful; otherwise, <see langword="null"/>.</param>
     /// <returns><see langword="true"/> if deserialization succeeds; otherwise, <see langword="false"/>.</returns>
+    /// <remarks>This method calls <see cref="FromJson"/> and returns its result.</remarks>
     public static bool TryFromJson(string json, out FluentConnectionStringBuilder? value)
     {
         value = FromJson(json);
