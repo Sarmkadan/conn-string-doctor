@@ -7,7 +7,9 @@ using System.Text;
 namespace ConnStringDoctor
 {
     /// <summary>
-    /// Builds provider-specific connection strings using a fluent API.
+    /// Provides a fluent interface for constructing provider-specific connection strings.
+    /// This class enables building connection strings for various database connection strings using method chaining,
+    /// with proper escaping and provider-specific formatting.
     /// </summary>
     public sealed class FluentConnectionStringBuilder
     {
@@ -27,6 +29,16 @@ namespace ConnStringDoctor
         private readonly Dictionary<string, string> _options = new();
 
         /// <summary>
+        /// Initializes a new instance of the <see cref="FluentConnectionStringBuilder"/> class for the specified provider.
+        /// </summary>
+        /// <param name="provider">The provider name; unrecognized providers produce a generic key=value string.</param>
+        /// <exception cref="ArgumentException"><paramref name="provider"/> is null, empty, or whitespace.</exception>
+        private FluentConnectionStringBuilder(string provider)
+        {
+            _provider = provider.Trim();
+        }
+
+        /// <summary>
         /// Creates a builder for the specified provider (e.g. "sqlserver", "postgresql", "mysql", "sqlite").
         /// </summary>
         /// <param name="provider">The provider name; unrecognized providers produce a generic key=value string.</param>
@@ -42,18 +54,13 @@ namespace ConnStringDoctor
             return new FluentConnectionStringBuilder(provider);
         }
 
-        private FluentConnectionStringBuilder(string provider)
-        {
-            _provider = provider.Trim();
-        }
-
         /// <summary>
-        /// Sets the host (and optionally the port) to connect to.
+        /// Configures the host name and optional port for the database server.
         /// </summary>
-        /// <param name="host">The server host name or address.</param>
-        /// <param name="port">The optional port number.</param>
-        /// <returns>The same builder instance for fluent chaining.</returns>
-        /// <exception cref="ArgumentException"><paramref name="host"/> is null, empty, or whitespace.</exception>
+        /// <param name="host">The server host name or IP address to connect to.</param>
+        /// <param name="port">The optional TCP port number; if null, uses the provider's default port.</param>
+        /// <returns>The same builder instance, enabling method chaining.</returns>
+        /// <exception cref="ArgumentException"><paramref name="host"/> is null, empty, or consists only of whitespace.</exception>
         public FluentConnectionStringBuilder WithHost(string host, int? port = null)
         {
             if (string.IsNullOrWhiteSpace(host))
@@ -67,11 +74,13 @@ namespace ConnStringDoctor
         }
 
         /// <summary>
-        /// Sets the database name (or file path for SQLite).
+        /// Specifies the database name or file path for the connection.
+        /// For SQL Server, PostgreSQL, and MySQL this is the database name.
+        /// For SQLite this is the path to the SQLite database file.
         /// </summary>
-        /// <param name="db">The database name.</param>
-        /// <returns>The same builder instance for fluent chaining.</returns>
-        /// <exception cref="ArgumentException"><paramref name="db"/> is null, empty, or whitespace.</exception>
+        /// <param name="db">The database name or file path.</param>
+        /// <returns>The same builder instance, enabling method chaining.</returns>
+        /// <exception cref="ArgumentException"><paramref name="db"/> is null, empty, or consists only of whitespace.</exception>
         public FluentConnectionStringBuilder WithDatabase(string db)
         {
             if (string.IsNullOrWhiteSpace(db))
@@ -84,12 +93,12 @@ namespace ConnStringDoctor
         }
 
         /// <summary>
-        /// Sets user/password credentials and disables integrated security.
+        /// Configures username and password authentication, automatically disabling integrated security.
         /// </summary>
-        /// <param name="user">The user name.</param>
-        /// <param name="password">The password.</param>
-        /// <returns>The same builder instance for fluent chaining.</returns>
-        /// <exception cref="ArgumentException"><paramref name="user"/> or <paramref name="password"/> is null, empty, or whitespace.</exception>
+        /// <param name="user">The user name for database authentication.</param>
+        /// <param name="password">The password for the specified user.</param>
+        /// <returns>The same builder instance, enabling method chaining.</returns>
+        /// <exception cref="ArgumentException"><paramref name="user"/> or <paramref name="password"/> is null, empty, or consists only of whitespace.</exception>
         public FluentConnectionStringBuilder WithCredentials(string user, string password)
         {
             if (string.IsNullOrWhiteSpace(user))
@@ -109,9 +118,10 @@ namespace ConnStringDoctor
         }
 
         /// <summary>
-        /// Enables integrated (OS) security and clears any previously set credentials.
+        /// Configures the connection to use Windows integrated security (also known as trusted connection).
+        /// This clears any previously configured username and password credentials.
         /// </summary>
-        /// <returns>The same builder instance for fluent chaining.</returns>
+        /// <returns>The same builder instance, enabling method chaining.</returns>
         public FluentConnectionStringBuilder WithIntegratedSecurity()
         {
             _integratedSecurity = true;
@@ -121,10 +131,11 @@ namespace ConnStringDoctor
         }
 
         /// <summary>
-        /// Sets whether SSL/TLS is required for the connection. Defaults to required.
+        /// Configures whether SSL/TLS encryption is required for the connection.
+        /// Defaults to requiring encryption for security.
         /// </summary>
-        /// <param name="required">True to require encryption; false to disable it.</param>
-        /// <returns>The same builder instance for fluent chaining.</returns>
+        /// <param name="required">True to require SSL/TLS encryption; false to allow unencrypted connections.</param>
+        /// <returns>The same builder instance, enabling method chaining.</returns>
         public FluentConnectionStringBuilder WithSsl(bool required = true)
         {
             _sslRequired = required;
@@ -132,11 +143,11 @@ namespace ConnStringDoctor
         }
 
         /// <summary>
-        /// Sets the minimum and maximum connection pool sizes.
+        /// Configures the connection pool minimum and maximum size limits.
         /// </summary>
-        /// <param name="min">The minimum pool size; must not be negative.</param>
-        /// <param name="max">The maximum pool size; must not be less than <paramref name="min"/>.</param>
-        /// <returns>The same builder instance for fluent chaining.</returns>
+        /// <param name="min">The minimum number of connections to maintain in the pool; must be non-negative.</param>
+        /// <param name="max">The maximum number of connections allowed in the pool; must not be less than <paramref name="min"/>.</param>
+        /// <returns>The same builder instance, enabling method chaining.</returns>
         /// <exception cref="ArgumentException"><paramref name="min"/> is negative or <paramref name="max"/> is less than <paramref name="min"/>.</exception>
         public FluentConnectionStringBuilder WithPooling(int min, int max)
         {
@@ -156,10 +167,10 @@ namespace ConnStringDoctor
         }
 
         /// <summary>
-        /// Sets the connection timeout in seconds.
+        /// Configures the connection timeout duration in seconds.
         /// </summary>
-        /// <param name="seconds">The timeout in seconds; must be positive.</param>
-        /// <returns>The same builder instance for fluent chaining.</returns>
+        /// <param name="seconds">The connection timeout in seconds; must be a positive integer.</param>
+        /// <returns>The same builder instance, enabling method chaining.</returns>
         /// <exception cref="ArgumentException"><paramref name="seconds"/> is zero or negative.</exception>
         public FluentConnectionStringBuilder WithTimeout(int seconds)
         {
@@ -173,12 +184,12 @@ namespace ConnStringDoctor
         }
 
         /// <summary>
-        /// Adds or overwrites an arbitrary key/value option appended verbatim to the connection string.
+        /// Adds or updates a custom connection string parameter that will be appended to the final connection string.
         /// </summary>
-        /// <param name="key">The option key.</param>
-        /// <param name="value">The option value.</param>
-        /// <returns>The same builder instance for fluent chaining.</returns>
-        /// <exception cref="ArgumentException"><paramref name="key"/> or <paramref name="value"/> is null, empty, or whitespace.</exception>
+        /// <param name="key">The parameter name/key to add or update.</param>
+        /// <param name="value">The parameter value to set.</param>
+        /// <returns>The same builder instance, enabling method chaining.</returns>
+        /// <exception cref="ArgumentException"><paramref name="key"/> or <paramref name="value"/> is null, empty, or consists only of whitespace.</exception>
         public FluentConnectionStringBuilder WithOption(string key, string value)
         {
             if (string.IsNullOrWhiteSpace(key))
@@ -196,10 +207,10 @@ namespace ConnStringDoctor
         }
 
         /// <summary>
-        /// Builds the connection string using the syntax of the configured provider.
+        /// Constructs the final connection string using the syntax appropriate for the configured database provider.
         /// </summary>
-        /// <returns>The composed connection string.</returns>
-        /// <exception cref="InvalidOperationException">The provider is SQLite and no database path was configured.</exception>
+        /// <returns>The complete connection string ready for use with the specified provider.</returns>
+        /// <exception cref="InvalidOperationException">Thrown when building a SQLite connection string without a configured database path.</exception>
         public string Build()
         {
             var builder = new StringBuilder();
@@ -231,9 +242,12 @@ namespace ConnStringDoctor
         }
 
         /// <summary>
-        /// Quotes a value per ADO.NET connection string rules when it contains
-        /// separators, quotes, or leading/trailing whitespace.
+        /// Escapes a connection string value according to ADO.NET rules.
+        /// Values containing separators (;, =), quotes (", '), or leading/trailing whitespace are wrapped in double quotes.
+        /// Internal quotes are doubled to escape them.
         /// </summary>
+        /// <param name="value">The value to escape; if null or empty, returns an empty string.</param>
+        /// <returns>The escaped value ready for inclusion in a connection string.</returns>
         private static string Escape(string? value)
         {
             if (string.IsNullOrEmpty(value))
@@ -530,8 +544,10 @@ namespace ConnStringDoctor
         }
 
         /// <summary>
-        /// Captures the current builder configuration as a serializable snapshot.
+        /// Creates a serializable snapshot of the current builder configuration.
+        /// This allows the connection string configuration to be saved and later restored.
         /// </summary>
+        /// <returns>A new <see cref="FluentConnectionStringBuilderState"/> instance containing the current configuration.</returns>
         internal FluentConnectionStringBuilderState CaptureState() => new()
         {
             Provider = _provider,
@@ -549,10 +565,12 @@ namespace ConnStringDoctor
         };
 
         /// <summary>
-        /// Reconstructs a builder from a previously captured snapshot.
+        /// Reconstructs a <see cref="FluentConnectionStringBuilder"/> instance from a previously captured configuration snapshot.
         /// </summary>
+        /// <param name="state">The configuration snapshot to restore from.</param>
+        /// <returns>A new builder instance configured with the values from the snapshot.</returns>
         /// <exception cref="ArgumentNullException"><paramref name="state"/> is null.</exception>
-        /// <exception cref="ArgumentException">The snapshot has no provider.</exception>
+        /// <exception cref="ArgumentException">The snapshot does not contain a valid provider name.</exception>
         internal static FluentConnectionStringBuilder FromState(FluentConnectionStringBuilderState state)
         {
             ArgumentNullException.ThrowIfNull(state);
@@ -590,44 +608,76 @@ namespace ConnStringDoctor
     }
 
     /// <summary>
-    /// Serializable snapshot of a <see cref="FluentConnectionStringBuilder"/> configuration.
+    /// Represents a serializable snapshot of a <see cref="FluentConnectionStringBuilder"/> configuration.
+    /// This allows connection string configurations to be saved and restored across application sessions.
     /// </summary>
     internal sealed class FluentConnectionStringBuilderState
     {
-        /// <summary>Gets or sets the provider name.</summary>
+        /// <summary>
+        /// Gets or sets the database provider name (e.g., "sqlserver", "postgresql", "mysql", "sqlite").
+        /// This determines the connection string syntax used when building the final connection string.
+        /// </summary>
         public string Provider { get; set; } = string.Empty;
 
-        /// <summary>Gets or sets the host.</summary>
+        /// <summary>
+        /// Gets or sets the server host name or IP address to connect to.
+        /// </summary>
         public string? Host { get; set; }
 
-        /// <summary>Gets or sets the port.</summary>
+        /// <summary>
+        /// Gets or sets the TCP port number to connect to on the database server.
+        /// If null, the provider's default port will be used.
+        /// </summary>
         public int? Port { get; set; }
 
-        /// <summary>Gets or sets the database name.</summary>
+        /// <summary>
+        /// Gets or sets the database name or file path for the connection.
+        /// For SQL Server, PostgreSQL, and MySQL this is the database name.
+        /// For SQLite this is the path to the SQLite database file.
+        /// </summary>
         public string? Database { get; set; }
 
-        /// <summary>Gets or sets the user name.</summary>
+        /// <summary>
+        /// Gets or sets the user name for database authentication.
+        /// </summary>
         public string? User { get; set; }
 
-        /// <summary>Gets or sets the password.</summary>
+        /// <summary>
+        /// Gets or sets the password for the specified user.
+        /// </summary>
         public string? Password { get; set; }
 
-        /// <summary>Gets or sets whether integrated security is enabled.</summary>
+        /// <summary>
+        /// Gets or sets whether integrated security (Windows authentication) is enabled.
+        /// When true, username and password credentials are ignored.
+        /// </summary>
         public bool IntegratedSecurity { get; set; }
 
-        /// <summary>Gets or sets whether SSL is required.</summary>
+        /// <summary>
+        /// Gets or sets whether SSL/TLS encryption is required for the connection.
+        /// Defaults to true for secure connections.
+        /// </summary>
         public bool SslRequired { get; set; } = true;
 
-        /// <summary>Gets or sets the minimum pool size.</summary>
+        /// <summary>
+        /// Gets or sets the minimum number of connections to maintain in the connection pool.
+        /// </summary>
         public int? PoolingMin { get; set; }
 
-        /// <summary>Gets or sets the maximum pool size.</summary>
+        /// <summary>
+        /// Gets or sets the maximum number of connections allowed in the connection pool.
+        /// </summary>
         public int? PoolingMax { get; set; }
 
-        /// <summary>Gets or sets the connection timeout in seconds.</summary>
+        /// <summary>
+        /// Gets or sets the connection timeout in seconds.
+        /// </summary>
         public int? Timeout { get; set; }
 
-        /// <summary>Gets or sets the additional options.</summary>
+        /// <summary>
+        /// Gets or sets additional connection string parameters as key-value pairs.
+        /// These parameters are appended verbatim to the connection string.
+        /// </summary>
         public Dictionary<string, string>? Options { get; set; }
     }
 }
