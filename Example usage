@@ -1,0 +1,24 @@
+var sqlConnectionString = "Server=myserver;Database=mydb;User ID=myuser;Password=mypwd;";
+
+// Parse the source connection string
+var converter = new ConnectionStringConverter();
+var sourceInfo = ConnectionStringConverter.Parse(sqlConnectionString);
+sourceInfo.Provider = "sqlserver"; // Set the source provider
+
+// Convert to PostgreSQL format
+var result = converter.Convert(sourceInfo, "postgres");
+
+Console.WriteLine("Converted connection string:");
+Console.WriteLine(result.ConnectionString);
+
+Console.WriteLine("\nUnmapped keys:");
+foreach (var key in result.UnmappedKeys)
+{
+    Console.WriteLine(key);
+}
+
+Console.WriteLine("\nWarnings:");
+foreach (var warning in result.Warnings)
+{
+    Console.WriteLine(warning);
+}
