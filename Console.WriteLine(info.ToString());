@@ -1,0 +1,2 @@
+
+This example creates a `ConnectionStringInfo` instance for a SQL Server connection, setting common properties and additional parameters in the `Properties` dictionary.
