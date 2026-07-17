@@ -16,6 +16,7 @@ public static class ConnectionStringConverterExtensions
     /// <param name="result">When successful, receives the conversion result; otherwise null.</param>
     /// <returns>True if conversion succeeded; false if source or target provider is invalid.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="converter"/> or <paramref name="source"/> is null.</exception>
+    /// <exception cref="ArgumentException"><paramref name="targetProvider"/> is null or whitespace.</exception>
     public static bool TryConvert(
         this ConnectionStringConverter converter,
         ConnectionStringConverter.ConnectionStringInfo source,
@@ -31,8 +32,9 @@ public static class ConnectionStringConverterExtensions
             result = converter.Convert(source, targetProvider.Trim());
             return true;
         }
-        catch
+        catch (Exception ex) when (ex is not OperationCanceledException and not ThreadAbortException)
         {
+            // Only swallow expected conversion exceptions, not system exceptions
             result = null;
             return false;
         }
@@ -134,9 +136,9 @@ public static class ConnectionStringConverterExtensions
     {
         ArgumentNullException.ThrowIfNull(info);
 
-        return info.OriginalParts.TryGetValue("Database", out var db) && !string.IsNullOrEmpty(db)
+        return info.OriginalParts.TryGetValue("Database", out var db) && !string.IsNullOrWhiteSpace(db)
             ? db
-            : info.OriginalParts.TryGetValue("Initial Catalog", out var catalog) && !string.IsNullOrEmpty(catalog)
+            : info.OriginalParts.TryGetValue("Initial Catalog", out var catalog) && !string.IsNullOrWhiteSpace(catalog)
                 ? catalog
                 : null;
     }
@@ -151,11 +153,11 @@ public static class ConnectionStringConverterExtensions
     {
         ArgumentNullException.ThrowIfNull(info);
 
-        return info.OriginalParts.TryGetValue("Server", out var server) && !string.IsNullOrEmpty(server)
+        return info.OriginalParts.TryGetValue("Server", out var server) && !string.IsNullOrWhiteSpace(server)
             ? server
-            : info.OriginalParts.TryGetValue("Host", out var host) && !string.IsNullOrEmpty(host)
+            : info.OriginalParts.TryGetValue("Host", out var host) && !string.IsNullOrWhiteSpace(host)
                 ? host
-                : info.OriginalParts.TryGetValue("Data Source", out var dataSource) && !string.IsNullOrEmpty(dataSource)
+                : info.OriginalParts.TryGetValue("Data Source", out var dataSource) && !string.IsNullOrWhiteSpace(dataSource)
                     ? dataSource
                     : null;
     }
@@ -170,9 +172,9 @@ public static class ConnectionStringConverterExtensions
     {
         ArgumentNullException.ThrowIfNull(info);
 
-        if (info.OriginalParts.TryGetValue("Port", out var portStr) && !string.IsNullOrEmpty(portStr))
+        if (info.OriginalParts.TryGetValue("Port", out var portStr) && !string.IsNullOrWhiteSpace(portStr))
         {
-            if (int.TryParse(portStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out var port))
+            if (int.TryParse(portStr, NumberStyles.Integer, CultureInfo.InvariantCulture, out var port) && port > 0 && port <= 65535)
             {
                 return port;
             }
