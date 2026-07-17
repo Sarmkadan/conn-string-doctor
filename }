@@ -1,0 +1,7 @@
+
+The example demonstrates:
+
+* `TryConvert` – safely attempts a conversion and returns a boolean.
+* `ParseAndConvert` – parses and converts in one step.
+* `GetValue`, `GetDatabaseName`, `GetServerName`, `GetPort` – retrieve common parts.
+* `HasWarnings`, `FirstWarning`, `HasUnmappedKeys`, `FirstUnmappedKey` – inspect conversion diagnostics.

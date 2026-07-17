@@ -15,3 +15,10 @@ Here's an example usage:
 
 The `ConnectionStringInfo` class represents parsed connection string details, including provider type, server, port, database, user credentials, and additional properties. It is used by conversion and validation components to process connection strings.
 
+## ConnectionStringConverterExtensions
+
+`ConnectionStringConverterExtensions` adds a collection of handy extension methods for `ConnectionStringConverter`, `ConversionResult`, and `ConnectionStringInfo`.  
+These helpers make it easier to perform conversions, inspect results, and retrieve common parts of a parsed connection string without dealing with the underlying dictionaries directly.
+
+**Example usage**
+
