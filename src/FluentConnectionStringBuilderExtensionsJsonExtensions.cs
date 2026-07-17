@@ -20,6 +20,7 @@ namespace ConnStringDoctor
         /// <param name="indented">If <c>true</c>, the output JSON will be formatted with indentation.</param>
         /// <returns>A JSON representation of the builder.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <c>null</c>.</exception>
+        /// <exception cref="JsonException">Thrown when serialization fails due to invalid state in the builder.</exception>
         public static string ToJson(this FluentConnectionStringBuilder value, bool indented = false)
         {
             ArgumentNullException.ThrowIfNull(value);
@@ -32,7 +33,8 @@ namespace ConnStringDoctor
         /// </summary>
         /// <param name="json">The JSON string to deserialize.</param>
         /// <returns>A new <see cref="FluentConnectionStringBuilder"/> populated from the JSON, or <c>null</c> if the JSON does not represent a valid object.</returns>
-        /// <exception cref="ArgumentException">Thrown when <paramref name="json"/> is <c>null</c> or an empty string.</exception>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="json"/> is <c>null</c>, empty, or consists only of whitespace.</exception>
+        /// <exception cref="JsonException">Thrown when the JSON is malformed or cannot be deserialized into a <see cref="FluentConnectionStringBuilder"/>.</exception>
         public static FluentConnectionStringBuilder? FromJson(string json)
         {
             ArgumentException.ThrowIfNullOrEmpty(json);
@@ -45,7 +47,7 @@ namespace ConnStringDoctor
         /// <param name="json">The JSON string to deserialize.</param>
         /// <param name="value">When this method returns, contains the deserialized <see cref="FluentConnectionStringBuilder"/> if the operation succeeded; otherwise, <c>null</c>.</param>
         /// <returns><c>true</c> if deserialization succeeded; otherwise, <c>false</c>.</returns>
-        /// <exception cref="ArgumentException">Thrown when <paramref name="json"/> is <c>null</c> or an empty string.</exception>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="json"/> is <c>null</c>, empty, or consists only of whitespace.</exception>
         public static bool TryFromJson(string json, out FluentConnectionStringBuilder? value)
         {
             ArgumentException.ThrowIfNullOrEmpty(json);
