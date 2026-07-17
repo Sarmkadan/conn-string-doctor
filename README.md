@@ -15,6 +15,43 @@ Here's an example usage:
 
 The `ConnectionStringInfo` class represents parsed connection string details, including provider type, server, port, database, user credentials, and additional properties. It is used by conversion and validation components to process connection strings.
 
+## ConnectionStringConverterValidation
+
+The `ConnectionStringConverterValidation` class provides extension methods for validating `ConnectionStringConverter.ConnectionStringInfo` and `ConversionResult` instances. It offers three validation modes: returning a list of problems, returning a boolean, or throwing an exception when invalid. This enables fluent validation patterns in your code.
+
+**Example usage**
+
+```csharp
+using ConnStringDoctor;
+
+// Parse a connection string
+var parsed = ConnectionStringConverter.Parse("Server=localhost;Database=test;");
+
+// Validate and get problems
+var problems = parsed.Validate();
+if (problems.Count > 0)
+{
+    Console.WriteLine("Validation failed:");
+    foreach (var problem in problems)
+    {
+        Console.WriteLine($"- {problem}");
+    }
+}
+
+// Quick validation check
+if (parsed.IsValid())
+{
+    Console.WriteLine("Connection string is valid!");
+}
+
+// Throw if invalid
+parsed.EnsureValid();
+
+// Validate ConversionResult
+var result = ConnectionStringConverter.Convert(parsed);
+result.EnsureValid();
+```
+
 ## ConnectionStringConverterExtensions
 
 `ConnectionStringConverterExtensions` adds a collection of handy extension methods for `ConnectionStringConverter`, `ConversionResult`, and `ConnectionStringInfo`.  
