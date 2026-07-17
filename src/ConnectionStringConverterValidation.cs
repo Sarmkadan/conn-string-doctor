@@ -25,7 +25,7 @@ public static class ConnectionStringConverterValidation
             problems.Add("Provider cannot be null, empty, or whitespace.");
         }
 
-        if (value.OriginalParts == null)
+        if (value.OriginalParts is null)
         {
             problems.Add("OriginalParts cannot be null.");
         }
@@ -73,12 +73,12 @@ public static class ConnectionStringConverterValidation
             problems.Add("ConnectionString cannot be null, empty, or whitespace.");
         }
 
-        if (value.UnmappedKeys == null)
+        if (value.UnmappedKeys is null)
         {
             problems.Add("UnmappedKeys cannot be null.");
         }
 
-        if (value.Warnings == null)
+        if (value.Warnings is null)
         {
             problems.Add("Warnings cannot be null.");
         }
