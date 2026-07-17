@@ -15,18 +15,18 @@ namespace ConnStringDoctor
     {
         private static readonly char[] _charsRequiringQuotes = { ';', '=', '"', '\'' };
 
-        private readonly string _provider;
-        private string? _host;
-        private int? _port;
-        private string? _database;
-        private string? _user;
-        private string? _password;
-        private bool _integratedSecurity;
-        private bool _sslRequired = true;
-        private int? _poolingMin;
-        private int? _poolingMax;
-        private int? _timeout;
-        private readonly Dictionary<string, string> _options = new();
+        internal readonly string _provider;
+        internal string? _host;
+        internal int? _port;
+        internal string? _database;
+        internal string? _user;
+        internal string? _password;
+        internal bool _integratedSecurity;
+        internal bool _sslRequired = true;
+        internal int? _poolingMin;
+        internal int? _poolingMax;
+        internal int? _timeout;
+        internal readonly Dictionary<string, string> _options = new();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FluentConnectionStringBuilder"/> class for the specified provider.
