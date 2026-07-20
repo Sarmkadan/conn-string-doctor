@@ -13,7 +13,7 @@ namespace ConnStringDoctor;
 internal sealed class TimeoutConfigCheck : IDiagnosticCheck
 {
     /// <inheritdoc />
-    public string Name => "Timeouts";
+    public string Name => "Timeout";
 
     /// <inheritdoc />
     public Task<DiagnosticResult> RunAsync(ConnectionStringInfo info, CancellationToken ct)
@@ -41,33 +41,25 @@ internal sealed class TimeoutConfigCheck : IDiagnosticCheck
             int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed);
 
         // 1. Connect Timeout handling
-        if (TryGet(out var connectTimeoutStr, "Connect Timeout", "Connection Timeout", "Timeout"))
+        if (TryGet(out var timeoutStr, "Connect Timeout", "Connection Timeout", "Timeout") && TryParseInt(timeoutStr, out var timeout))
         {
-            if (TryParseInt(connectTimeoutStr, out var connectTimeout) && connectTimeout > 0)
+            if (timeout > 60)
             {
-                // Connect Timeout > 60s -> warning: hides network issues
-                if (connectTimeout > 60)
-                {
-                    result.AddWarning($"Connect Timeout is {connectTimeout} seconds, which may mask network problems.");
-                }
+                result.AddWarning($"Connect Timeout is {timeout} seconds, which may hide network issues.");
             }
         }
         else
         {
-            // No Connect Timeout specified -> info about default assumption
-            result.SetMessage("Connect Timeout not specified; default is typically 15 seconds.");
+            // No Connect Timeout specified -> recommendation (info level)
+            result.AddWarning("Connect Timeout not specified; default is 15 seconds.");
         }
 
         // 2. Command Timeout handling
-        if (TryGet(out var commandTimeoutStr, "Command Timeout"))
+        if (TryGet(out var cmdTimeoutStr, "Command Timeout", "CommandTimeout") && TryParseInt(cmdTimeoutStr, out var cmdTimeout))
         {
-            if (TryParseInt(commandTimeoutStr, out var commandTimeout))
+            if (cmdTimeout == 0)
             {
-                // Command Timeout of 0 -> warning: infinite
-                if (commandTimeout == 0)
-                {
-                    result.AddWarning("Command Timeout is 0, which means infinite timeout.");
-                }
+                result.AddWarning("Command Timeout is set to 0, which means infinite timeout.");
             }
         }
 
