@@ -207,6 +207,48 @@ namespace ConnStringDoctor
         }
 
         /// <summary>
+        /// Validates the current builder state and returns a list of human-readable problems.
+        /// Checks for missing host/server, missing database, and conflicting options.
+        /// </summary>
+        /// <returns>A list of validation problems; empty if validation passes.</returns>
+        public List<string> Validate()
+        {
+            var problems = new List<string>();
+
+            // Check for missing host/server
+            if (string.IsNullOrEmpty(_host))
+            {
+                problems.Add("missing host/server");
+            }
+
+            // Check for missing database (required for most providers except when using integrated security without explicit database)
+            if (string.IsNullOrEmpty(_database) && !_integratedSecurity)
+            {
+                problems.Add("missing database");
+            }
+
+            // Check for conflicting options: both integrated security and credentials
+            if (_integratedSecurity && (!string.IsNullOrEmpty(_user) || !string.IsNullOrEmpty(_password)))
+            {
+                problems.Add("conflicting options: integrated security is enabled but credentials are also configured");
+            }
+
+            // Check for invalid pooling configuration
+            if (_poolingMin.HasValue && _poolingMax.HasValue && _poolingMin.Value > _poolingMax.Value)
+            {
+                problems.Add("conflicting options: pooling minimum cannot be greater than maximum");
+            }
+
+            // Check for negative pooling values
+            if (_poolingMin.HasValue && _poolingMin.Value < 0)
+            {
+                problems.Add("conflicting options: pooling minimum cannot be negative");
+            }
+
+            return problems;
+        }
+
+        /// <summary>
         /// Constructs the final connection string using the syntax appropriate for the configured database provider.
         /// </summary>
         /// <returns>The complete connection string ready for use with the specified provider.</returns>
