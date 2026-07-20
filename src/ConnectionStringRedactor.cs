@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Data.Common;
 using System.Linq;
 
@@ -73,6 +74,45 @@ namespace ConnStringDoctor
                 // If parsing fails, return the original string unchanged.
                 return connectionString;
             }
+        }
+
+        /// <summary>
+        /// Redacts all secret values in the supplied connection string and returns them as a dictionary.
+        /// </summary>
+        /// <param name="connectionString">The original connection string.</param>
+        /// <param name="mask">The mask to replace secret values with.</param>
+        /// <returns>A dictionary of keyword->value with sensitive values masked.</returns>
+        public static IReadOnlyDictionary<string, string> RedactToDictionary(string connectionString, string mask = "***")
+        {
+            var result = new Dictionary<string, string>();
+            if (string.IsNullOrWhiteSpace(connectionString))
+                return result;
+
+            try
+            {
+                var builder = new DbConnectionStringBuilder
+                {
+                    ConnectionString = connectionString
+                };
+
+                foreach (string key in builder.Keys.Cast<string>())
+                {
+                    var value = builder[key]?.ToString();
+                    if (IsSecretKey(key))
+                    {
+                        result[key] = mask;
+                    }
+                    else
+                    {
+                        result[key] = value ?? string.Empty;
+                    }
+                }
+            }
+            catch (ArgumentException)
+            {
+                // If parsing fails, return empty dictionary.
+            }
+            return result;
         }
 
         /// <summary>
