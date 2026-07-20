@@ -4,6 +4,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
+    <OutputType>Exe</OutputType>
     <AssemblyName>ConnStringDoctor</AssemblyName>
     <RootNamespace>ConnStringDoctor</RootNamespace>
     <PackageId>ConnStringDoctor</PackageId>
