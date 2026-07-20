@@ -1,9 +1,9 @@
 using System.CommandLine;
 using ConnStringDoctor;
 
-var rootCommand = new RootCommand("Connection String Doctor - Diagnose connection strings for common issues");
+var rootCommand = new RootCommand("Connection String Doctor - Diagnoses connection strings for common issues and compares them");
 
-// Define options
+// Define options for diagnose command
 var connectionStringOption = new Option<string>(
     name: "--connection-string",
     description: "The connection string to diagnose");
@@ -13,8 +13,8 @@ var formatOption = new Option<string>(
     description: "Output format (text, markdown)",
     getDefaultValue: () => "text");
 
-var outputOption = new Option<FileInfo?>
-    (name: "--output",
+var outputOption = new Option<FileInfo?>(
+    name: "--output",
     description: "Output file path (optional)");
 
 var includeSuccessOption = new Option<bool>(
@@ -27,13 +27,34 @@ var failOnOption = new Option<Severity>(
     description: "Exit with non-zero code if any diagnostic meets or exceeds this severity level (Info, Warning, Error)",
     getDefaultValue: () => Severity.Info);
 
-rootCommand.AddOption(connectionStringOption);
-rootCommand.AddOption(formatOption);
-rootCommand.AddOption(outputOption);
-rootCommand.AddOption(includeSuccessOption);
-rootCommand.AddOption(failOnOption);
+// Define options for compare command
+var connectionStringAOption = new Option<string>(
+    name: "--connection-string-a",
+    description: "First connection string to compare");
 
-rootCommand.SetHandler(async (context) =>
+var connectionStringBOption = new Option<string>(
+    name: "--connection-string-b",
+    description: "Second connection string to compare");
+
+var redactOption = new Option<bool>(
+    name: "--redact",
+    description: "Redact sensitive information (passwords, tokens, etc.)",
+    getDefaultValue: () => true);
+
+var showAllOption = new Option<bool>(
+    name: "--show-all",
+    description: "Show all keys including matching ones",
+    getDefaultValue: () => false);
+
+// Create diagnose command
+var diagnoseCommand = new Command("diagnose", "Diagnose a connection string for common issues");
+diagnoseCommand.AddOption(connectionStringOption);
+diagnoseCommand.AddOption(formatOption);
+diagnoseCommand.AddOption(outputOption);
+diagnoseCommand.AddOption(includeSuccessOption);
+diagnoseCommand.AddOption(failOnOption);
+
+diagnoseCommand.SetHandler(async (context) =>
 {
     try
     {
@@ -54,7 +75,7 @@ rootCommand.SetHandler(async (context) =>
             new DuplicateKeyCheck(),
             new PoolConfigCheck(),
             new TimeoutConfigCheck(),
-    new TimeoutSanityCheck(),
+            new TimeoutSanityCheck(),
             new DnsAndTcpCheck()
         };
 
@@ -104,6 +125,49 @@ rootCommand.SetHandler(async (context) =>
     }
 });
 
+// Create compare command
+var compareCommand = new Command("compare", "Compare two connection strings key-by-key");
+compareCommand.AddOption(connectionStringAOption);
+compareCommand.AddOption(connectionStringBOption);
+compareCommand.AddOption(redactOption);
+compareCommand.AddOption(showAllOption);
+compareCommand.AddOption(outputOption);
+
+compareCommand.SetHandler((context) =>
+{
+    try
+    {
+        var connectionStringA = context.ParseResult.GetValueForOption(connectionStringAOption);
+        var connectionStringB = context.ParseResult.GetValueForOption(connectionStringBOption);
+        var redact = context.ParseResult.GetValueForOption(redactOption);
+        var showAll = context.ParseResult.GetValueForOption(showAllOption);
+        var outputFile = context.ParseResult.GetValueForOption(outputOption);
+
+        // Compare the connection strings
+        var output = ConnectionStringComparator.Compare(connectionStringA, connectionStringB, redact, showAll);
+
+        // Write to output file or console
+        if (outputFile != null)
+        {
+            File.WriteAllText(outputFile.FullName, output);
+            Console.WriteLine($"Comparison written to: {outputFile.FullName}");
+        }
+        else
+        {
+            Console.WriteLine(output);
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Error: {ex.Message}");
+        Environment.Exit(1);
+    }
+});
+
+// Add subcommands to root
+rootCommand.AddCommand(diagnoseCommand);
+rootCommand.AddCommand(compareCommand);
+
 return await rootCommand.InvokeAsync(args);
 
 static string FormatAsText(List<DiagnosticResult> results, bool includeSuccess)
@@ -112,6 +176,11 @@ static string FormatAsText(List<DiagnosticResult> results, bool includeSuccess)
 
     foreach (var result in results.OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase))
     {
+        if (!includeSuccess && result.IsSuccess)
+        {
+            continue;
+        }
+
         builder.AppendLine($"Check: {result.Name}");
         builder.AppendLine($" Status: {(result.IsSuccess ? "PASS" : "FAIL")}");
 

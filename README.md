@@ -1,6 +1,6 @@
 # conn-string-doctor
 
-Diagnoses connection strings: parsing, reachability, TLS, pooling, timeouts.
+Diagnoses connection strings: parsing, reachability, TLS, pooling, timeouts, and comparison.
 
 > v0.1 in progress.
 
@@ -59,3 +59,34 @@ These helpers make it easier to perform conversions, inspect results, and retrie
 
 **Example usage**
 
+
+## Connection String Comparison
+
+The `compare` command allows you to compare two connection strings key-by-key, showing:
+- Keys that are only in the first connection string (⊖)
+- Keys that are only in the second connection string (⊕)
+- Keys with different values (✗)
+- Matching keys (✓ when using --show-all)
+
+Credentials are redacted by default for security.
+
+**Example usage**
+
+```bash
+# Compare two connection strings
+dotnet run -- compare \
+  --connection-string-a "Server=localhost;Database=test;User Id=admin;Password=secret123;Timeout=30" \
+  --connection-string-b "Server=localhost;Database=test;User Id=admin;Password=secret456;Timeout=60"
+
+# Output shows: ✗ timeout
+#                A: 30
+#                B: 60
+
+# Compare with all keys shown
+dotnet run -- compare \
+  --connection-string-a "Server=localhost;Database=test;User Id=admin;Password=secret123;Timeout=30;Encrypt=true" \
+  --connection-string-b "Server=localhost;Database=test;User Id=admin;Password=secret456;Timeout=30" \
+  --show-all
+
+# Output shows all keys with differences marked
+```
