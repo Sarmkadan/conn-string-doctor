@@ -13,7 +13,16 @@ namespace ConnStringDoctor;
 /// </summary>
 internal sealed class DnsAndTcpCheck : IDiagnosticCheck
 {
-    private static readonly TimeSpan _connectTimeout = TimeSpan.FromSeconds(5);
+    private readonly TimeSpan _connectTimeout;
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="DnsAndTcpCheck"/> class.
+    /// </summary>
+    /// <param name="connectTimeout">TCP connection timeout. If not specified, defaults to 5 seconds.</param>
+    public DnsAndTcpCheck(TimeSpan? connectTimeout = null)
+    {
+        _connectTimeout = connectTimeout ?? TimeSpan.FromSeconds(5);
+    }
 
     /// <inheritdoc />
     public string Name => "Reachability";
@@ -90,7 +99,7 @@ internal sealed class DnsAndTcpCheck : IDiagnosticCheck
         }
         catch (OperationCanceledException)
         {
-            result.AddError($"Connection timed out after {(int)_connectTimeout.TotalSeconds} seconds. Check firewall, VPN, and port settings.");
+            result.AddError($"Connection timed out after {_connectTimeout.TotalSeconds:F0} seconds. Check firewall, VPN, and port settings.");
         }
         catch (Exception ex) when (ex is SocketException or ArgumentException)
         {
