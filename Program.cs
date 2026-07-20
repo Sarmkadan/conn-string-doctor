@@ -54,6 +54,7 @@ rootCommand.SetHandler(async (context) =>
             new DuplicateKeyCheck(),
             new PoolConfigCheck(),
             new TimeoutConfigCheck(),
+    new TimeoutSanityCheck(),
             new DnsAndTcpCheck()
         };
 
