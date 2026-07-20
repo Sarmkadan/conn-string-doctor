@@ -56,6 +56,27 @@ public sealed class ConnectionStringConverter
         return new ConnectionStringInfo { Provider = string.Empty, OriginalParts = parts.AsReadOnly() };
     }
 
+    /// <summary>
+    /// Attempts to parse a connection string into its key/value parts using ADO.NET quoting rules.
+    /// The provider is left empty; set <see cref="ConnectionStringInfo.Provider"/> before converting.
+    /// </summary>
+    /// <param name="connectionString">The connection string to parse; may be null or empty.</param>
+    /// <param name="info">When this method returns, contains the parsed connection string information if parsing succeeded, or null if parsing failed.</param>
+    /// <returns>true if the connection string was successfully parsed; otherwise, false.</returns>
+    public static bool TryParse(string connectionString, out ConnectionStringInfo? info)
+    {
+        try
+        {
+            info = Parse(connectionString);
+            return true;
+        }
+        catch
+        {
+            info = null;
+            return false;
+        }
+    }
+
     private static void ParseSegments(string connectionString, Dictionary<string, string> parts)
     {
         foreach (var segment in connectionString.Split(';'))
