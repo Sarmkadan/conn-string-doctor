@@ -42,6 +42,12 @@ internal sealed class DuplicateKeyCheck : IDiagnosticCheck
 
             result.SetMessage(message.ToString());
             result.SetDetails("Connection string contains duplicate keys. Only the last occurrence is used by most parsers.");
+
+            // Add warning for each duplicate key
+            foreach (var (key, values) in duplicateKeys)
+            {
+                result.AddWarning($"Duplicate key '{key}' found {values.Count + 1} times in connection string");
+            }
         }
 
         return Task.FromResult(result);

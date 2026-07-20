@@ -1,6 +1,27 @@
 namespace ConnStringDoctor;
 
 /// <summary>
+/// Represents the severity level of a diagnostic result.
+/// </summary>
+public enum Severity
+{
+    /// <summary>
+    /// Informational message - no action required.
+    /// </summary>
+    Info = 0,
+
+    /// <summary>
+    /// Warning - potential issue that should be addressed.
+    /// </summary>
+    Warning = 1,
+
+    /// <summary>
+    /// Error - critical issue that must be fixed.
+    /// </summary>
+    Error = 2
+}
+
+/// <summary>
 /// Represents the result of a diagnostic check.
 /// </summary>
 internal sealed class DiagnosticResult
@@ -9,6 +30,7 @@ internal sealed class DiagnosticResult
     private readonly List<string> _errors = new();
     private string? _message;
     private string? _details;
+        private Severity _severity = Severity.Info;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="DiagnosticResult"/> class.
@@ -44,6 +66,11 @@ internal sealed class DiagnosticResult
     /// </summary>
     public IReadOnlyList<string> Errors => _errors.AsReadOnly();
 
+        /// <summary>
+        /// Gets the severity level of the diagnostic result.
+        /// </summary>
+        public Severity ResultSeverity => _severity;
+
     /// <summary>
     /// Gets whether the diagnostic check passed without errors or warnings.
     /// </summary>
@@ -68,20 +95,6 @@ internal sealed class DiagnosticResult
     }
 
     /// <summary>
-    /// Adds a warning to the diagnostic result.
-    /// </summary>
-    /// <param name="warning">The warning message.</param>
-    public void AddWarning(string warning)
-    {
-        if (warning is null)
-        {
-            throw new ArgumentNullException(nameof(warning));
-        }
-
-        _warnings.Add(warning);
-    }
-
-    /// <summary>
     /// Adds an error to the diagnostic result.
     /// </summary>
     /// <param name="error">The error message.</param>
@@ -93,5 +106,49 @@ internal sealed class DiagnosticResult
         }
 
         _errors.Add(error);
+        UpdateSeverity();
+    }
+
+    /// <summary>
+    /// Adds a warning to the diagnostic result.
+    /// </summary>
+    /// <param name="warning">The warning message.</param>
+    public void AddWarning(string warning)
+    {
+        if (warning is null)
+        {
+            throw new ArgumentNullException(nameof(warning));
+        }
+
+        _warnings.Add(warning);
+        UpdateSeverity();
+    }
+
+    /// <summary>
+    /// Sets the severity level explicitly.
+    /// </summary>
+    /// <param name="severity">The severity level to set.</param>
+    public void SetSeverity(Severity severity)
+    {
+        _severity = severity;
+    }
+
+    /// <summary>
+    /// Updates the severity based on current errors and warnings.
+    /// </summary>
+    private void UpdateSeverity()
+    {
+        if (_errors.Count > 0)
+        {
+            _severity = Severity.Error;
+        }
+        else if (_warnings.Count > 0)
+        {
+            _severity = Severity.Warning;
+        }
+        else
+        {
+            _severity = Severity.Info;
+        }
     }
 }

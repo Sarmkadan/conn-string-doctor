@@ -157,6 +157,12 @@ internal sealed class DeprecatedKeywordCheck : IDiagnosticCheck
             }
 
             result.SetDetails(details.ToString());
+
+            // Add warnings for each deprecated keyword
+            foreach (var (key, _, _) in deprecatedFound)
+            {
+                result.AddWarning($"Deprecated keyword '{key}' found in connection string");
+            }
         }
 
         return Task.FromResult(result);

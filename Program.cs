@@ -22,10 +22,16 @@ var includeSuccessOption = new Option<bool>(
     description: "Include successful checks in output",
     getDefaultValue: () => false);
 
+var failOnOption = new Option<Severity>(
+    name: "--fail-on",
+    description: "Exit with non-zero code if any diagnostic meets or exceeds this severity level (Info, Warning, Error)",
+    getDefaultValue: () => Severity.Info);
+
 rootCommand.AddOption(connectionStringOption);
 rootCommand.AddOption(formatOption);
 rootCommand.AddOption(outputOption);
 rootCommand.AddOption(includeSuccessOption);
+rootCommand.AddOption(failOnOption);
 
 rootCommand.SetHandler(async (context) =>
 {
@@ -36,6 +42,7 @@ rootCommand.SetHandler(async (context) =>
         var format = context.ParseResult.GetValueForOption(formatOption);
         var outputFile = context.ParseResult.GetValueForOption(outputOption);
         var includeSuccess = context.ParseResult.GetValueForOption(includeSuccessOption);
+        var failOnSeverity = context.ParseResult.GetValueForOption(failOnOption);
 
         // Parse the connection string using ConnectionStringParser
         var parsed = ConnectionStringParser.Parse(connectionString);
@@ -81,6 +88,13 @@ rootCommand.SetHandler(async (context) =>
         {
             Console.WriteLine(output);
         }
+
+        // Check if we should fail based on severity
+        var maxSeverity = results.Max(r => r.ResultSeverity);
+        if (maxSeverity >= failOnSeverity)
+        {
+            Environment.Exit(1);
+        }
     }
     catch (Exception ex)
     {
@@ -98,28 +112,28 @@ static string FormatAsText(List<DiagnosticResult> results, bool includeSuccess)
     foreach (var result in results.OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase))
     {
         builder.AppendLine($"Check: {result.Name}");
-        builder.AppendLine($"  Status: {(result.IsSuccess ? "PASS" : "FAIL")}");
+        builder.AppendLine($" Status: {(result.IsSuccess ? "PASS" : "FAIL")}");
 
         if (!string.IsNullOrEmpty(result.Message))
         {
-            builder.AppendLine($"  Message: {result.Message}");
+            builder.AppendLine($" Message: {result.Message}");
         }
 
         if (result.Errors.Count > 0)
         {
-            builder.AppendLine($"  Errors ({result.Errors.Count}):");
+            builder.AppendLine($" Errors ({result.Errors.Count}):");
             foreach (var error in result.Errors)
             {
-                builder.AppendLine($"    - {error}");
+                builder.AppendLine($" - {error}");
             }
         }
 
         if (result.Warnings.Count > 0)
         {
-            builder.AppendLine($"  Warnings ({result.Warnings.Count}):");
+            builder.AppendLine($" Warnings ({result.Warnings.Count}):");
             foreach (var warning in result.Warnings)
             {
-                builder.AppendLine($"    - {warning}");
+                builder.AppendLine($" - {warning}");
             }
         }
 
