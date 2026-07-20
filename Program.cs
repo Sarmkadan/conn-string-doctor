@@ -46,6 +46,15 @@ var showAllOption = new Option<bool>(
     description: "Show all keys including matching ones",
     getDefaultValue: () => false);
 
+var normalizeRedactOption = new Option<bool>(
+	name: "--redact",
+	description: "Redact sensitive information (passwords, tokens, etc.)",
+	getDefaultValue: () => true);
+
+var normalizeConnectionStringOption = new Option<string>(
+	name: "--connection-string",
+	description: "The connection string to normalize");
+
 // Create diagnose command
 var diagnoseCommand = new Command("diagnose", "Diagnose a connection string for common issues");
 diagnoseCommand.AddOption(connectionStringOption);
@@ -59,7 +68,7 @@ diagnoseCommand.SetHandler(async (context) =>
     try
     {
         // Parse arguments
-        var connectionString = context.ParseResult.GetValueForOption(connectionStringOption);
+        var connectionString = context.ParseResult.GetValueForOption(connectionStringOption) ?? string.Empty;
         var format = context.ParseResult.GetValueForOption(formatOption);
         var outputFile = context.ParseResult.GetValueForOption(outputOption);
         var includeSuccess = context.ParseResult.GetValueForOption(includeSuccessOption);
@@ -164,9 +173,45 @@ compareCommand.SetHandler((context) =>
     }
 });
 
+// Create normalize command
+var normalizeCommand = new Command("normalize", "Normalize a connection string with canonical key names, sorted keys, and consistent spacing");
+normalizeCommand.AddOption(normalizeConnectionStringOption);
+normalizeCommand.AddOption(normalizeRedactOption);
+normalizeCommand.AddOption(outputOption);
+
+normalizeCommand.SetHandler((context) =>
+{
+    try
+    {
+        var connectionString = context.ParseResult.GetValueForOption(normalizeConnectionStringOption) ?? string.Empty;
+        var redact = context.ParseResult.GetValueForOption(normalizeRedactOption);
+        var outputFile = context.ParseResult.GetValueForOption(outputOption);
+
+        // Normalize the connection string
+        var normalized = ConnectionStringNormalizer.Normalize(connectionString, redact);
+
+        // Write to output file or console
+        if (outputFile != null)
+        {
+            File.WriteAllText(outputFile.FullName, normalized);
+            Console.WriteLine($"Normalized connection string written to: {outputFile.FullName}");
+        }
+        else
+        {
+            Console.WriteLine(normalized);
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Error: {ex.Message}");
+        Environment.Exit(1);
+    }
+});
+
 // Add subcommands to root
 rootCommand.AddCommand(diagnoseCommand);
 rootCommand.AddCommand(compareCommand);
+rootCommand.AddCommand(normalizeCommand);
 
 return await rootCommand.InvokeAsync(args);
 
