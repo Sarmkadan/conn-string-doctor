@@ -16,6 +16,9 @@ internal sealed class PoolConfigCheck : IDiagnosticCheck
     public string Name => "Pooling";
 
     /// <inheritdoc />
+    public string Description => "Validates pooling related settings in connection strings";
+
+    /// <inheritdoc />
     public Task<DiagnosticResult> RunAsync(ConnectionStringInfo info, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(info);
@@ -38,9 +41,9 @@ internal sealed class PoolConfigCheck : IDiagnosticCheck
         }
 
         static bool TryParseInt(string? text, out int parsed) =>
-            int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed);
+        int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed);
 
-        // 1. Pooling = false  -> warning
+        // 1. Pooling = false -> warning
         if (TryGet(out var poolingValue, "Pooling"))
         {
             if (bool.TryParse(poolingValue, out var poolingBool))

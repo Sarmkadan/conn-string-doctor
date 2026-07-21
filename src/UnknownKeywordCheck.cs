@@ -15,6 +15,9 @@ internal sealed class UnknownKeywordCheck : IDiagnosticCheck
     /// <inheritdoc />
     public string Name => "UnknownKeywords";
 
+    /// <inheritdoc />
+    public string Description => "Detects unknown keywords in connection strings and suggests closest known keywords";
+
     /// <summary>
     /// All known keywords organized by database provider.
     /// </summary>
@@ -29,17 +32,11 @@ internal sealed class UnknownKeywordCheck : IDiagnosticCheck
             "password", "pwd",
             "port",
             "integrated security", "trusted_connection",
-            "application intent",
-            "connect timeout", "connection timeout",
-            "encrypt",
-            "trustservercertificate",
-            "multipleactiveresultsets",
+            "application intent", "connect timeout", "connection timeout",
+            "encrypt", "trustservercertificate", "multipleactiveresultsets",
             "pooling", "max pool size", "min pool size",
-            "asynchronous processing",
-            "connection reset",
-            "network library",
-            "persist security info",
-            "packet size"
+            "asynchronous processing", "connection reset", "network library",
+            "persist security info", "packet size"
         },
 
         // PostgreSQL known keywords
@@ -50,14 +47,9 @@ internal sealed class UnknownKeywordCheck : IDiagnosticCheck
             "database", "dbname",
             "user", "username", "user id",
             "password", "pwd",
-            "sslmode",
-            "sslcert",
-            "sslkey",
-            "sslrootcert",
+            "sslmode", "sslcert", "sslkey", "sslrootcert",
             "connect timeout", "connection timeout",
-            "application name",
-            "search_path",
-            "protocol"
+            "application name", "search_path", "protocol"
         },
 
         // MySQL known keywords
@@ -71,8 +63,7 @@ internal sealed class UnknownKeywordCheck : IDiagnosticCheck
             "sslmode",
             "connect timeout", "connection timeout",
             "compress", "use compression",
-            "allowpublickeyretrieval",
-            "charset", "character set"
+            "allowpublickeyretrieval", "charset", "character set"
         },
 
         // SQLite known keywords (file-based, so mostly just the database file path)
@@ -86,85 +77,6 @@ internal sealed class UnknownKeywordCheck : IDiagnosticCheck
             "temp_store"
         }
     };
-
-    /// <summary>
-    /// Levenshtein distance calculator for string similarity.
-    /// </summary>
-    private static class Levenshtein
-    {
-        /// <summary>
-        /// Calculates the Levenshtein distance between two strings.
-        /// </summary>
-        /// <param name="a">First string</param>
-        /// <param name="b">Second string</param>
-        /// <returns>The Levenshtein distance (number of edits needed to transform a to b)</returns>
-        public static int Distance(string a, string b)
-        {
-            if (string.IsNullOrEmpty(a)) return string.IsNullOrEmpty(b) ? 0 : b.Length;
-            if (string.IsNullOrEmpty(b)) return a.Length;
-
-            int[,] distance = new int[a.Length + 1, b.Length + 1];
-
-            for (int i = 0; i <= a.Length; i++)
-                distance[i, 0] = i;
-            for (int j = 0; j <= b.Length; j++)
-                distance[0, j] = j;
-
-            for (int i = 1; i <= a.Length; i++)
-            {
-                for (int j = 1; j <= b.Length; j++)
-                {
-                    int cost = (a[i - 1] == b[j - 1]) ? 0 : 1;
-                    distance[i, j] = Math.Min(
-                        Math.Min(distance[i - 1, j] + 1,      // deletion
-                               distance[i, j - 1] + 1),     // insertion
-                        distance[i - 1, j - 1] + cost);   // substitution
-                }
-            }
-
-            return distance[a.Length, b.Length];
-        }
-
-        /// <summary>
-        /// Finds the closest match for a given keyword among a collection of keywords.
-        /// </summary>
-        /// <param name="keyword">The keyword to find a match for</param>
-        /// <param name="candidates">Collection of candidate keywords</param>
-        /// <param name="maxDistance">Maximum acceptable distance (default: 3)</param>
-        /// <returns>Tuple of (closestKeyword, distance) or (null, -1) if no good match found</returns>
-        public static (string? keyword, int distance) FindClosestMatch(string keyword, IEnumerable<string> candidates, int maxDistance = 3)
-        {
-            if (string.IsNullOrEmpty(keyword) || candidates == null || !candidates.Any())
-                return (null, -1);
-
-            string normalizedKeyword = keyword.ToLowerInvariant().Trim();
-
-            // Try exact match first
-            if (candidates.Contains(normalizedKeyword, StringComparer.OrdinalIgnoreCase))
-                return (keyword, 0);
-
-            // Find closest match using Levenshtein distance
-            string? closest = null;
-            int minDistance = int.MaxValue;
-
-            foreach (var candidate in candidates)
-            {
-                int distance = Distance(normalizedKeyword, candidate.ToLowerInvariant().Trim());
-
-                if (distance < minDistance)
-                {
-                    minDistance = distance;
-                    closest = candidate;
-                }
-            }
-
-            // Return match only if within acceptable distance
-            if (minDistance <= maxDistance)
-                return (closest, minDistance);
-
-            return (null, -1);
-        }
-    }
 
     /// <inheritdoc />
     public Task<DiagnosticResult> RunAsync(ConnectionStringInfo info, CancellationToken ct)
@@ -253,5 +165,84 @@ internal sealed class UnknownKeywordCheck : IDiagnosticCheck
         }
 
         return Task.FromResult(result);
+    }
+
+    /// <summary>
+    /// Levenshtein distance calculator for string similarity.
+    /// </summary>
+    private static class Levenshtein
+    {
+        /// <summary>
+        /// Calculates the Levenshtein distance between two strings.
+        /// </summary>
+        /// <param name="a">First string</param>
+        /// <param name="b">Second string</param>
+        /// <returns>The Levenshtein distance (number of edits needed to transform a to b)</returns>
+        public static int Distance(string a, string b)
+        {
+            if (string.IsNullOrEmpty(a)) return string.IsNullOrEmpty(b) ? 0 : b.Length;
+            if (string.IsNullOrEmpty(b)) return a.Length;
+
+            int[,] distance = new int[a.Length + 1, b.Length + 1];
+
+            for (int i = 0; i <= a.Length; i++)
+                distance[i, 0] = i;
+            for (int j = 0; j <= b.Length; j++)
+                distance[0, j] = j;
+
+            for (int i = 1; i <= a.Length; i++)
+            {
+                for (int j = 1; j <= b.Length; j++)
+                {
+                    int cost = (a[i - 1] == b[j - 1]) ? 0 : 1;
+                    distance[i, j] = Math.Min(
+                        Math.Min(distance[i - 1, j] + 1, // deletion
+                        distance[i, j - 1] + 1), // insertion
+                        distance[i - 1, j - 1] + cost); // substitution
+                }
+            }
+
+            return distance[a.Length, b.Length];
+        }
+
+        /// <summary>
+        /// Finds the closest match for a given keyword among a collection of keywords.
+        /// </summary>
+        /// <param name="keyword">The keyword to find a match for</param>
+        /// <param name="candidates">Collection of candidate keywords</param>
+        /// <param name="maxDistance">Maximum acceptable distance (default: 3)</param>
+        /// <returns>Tuple of (closestKeyword, distance) or (null, -1) if no good match found</returns>
+        public static (string? keyword, int distance) FindClosestMatch(string keyword, IEnumerable<string> candidates, int maxDistance = 3)
+        {
+            if (string.IsNullOrEmpty(keyword) || candidates == null || !candidates.Any())
+                return (null, -1);
+
+            string normalizedKeyword = keyword.ToLowerInvariant().Trim();
+
+            // Try exact match first
+            if (candidates.Contains(normalizedKeyword, StringComparer.OrdinalIgnoreCase))
+                return (keyword, 0);
+
+            // Find closest match using Levenshtein distance
+            string? closest = null;
+            int minDistance = int.MaxValue;
+
+            foreach (var candidate in candidates)
+            {
+                int distance = Distance(normalizedKeyword, candidate.ToLowerInvariant().Trim());
+
+                if (distance < minDistance)
+                {
+                    minDistance = distance;
+                    closest = candidate;
+                }
+            }
+
+            // Return match only if within acceptable distance
+            if (minDistance <= maxDistance)
+                return (closest, minDistance);
+
+            return (null, -1);
+        }
     }
 }

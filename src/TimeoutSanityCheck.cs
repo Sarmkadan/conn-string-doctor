@@ -17,6 +17,9 @@ internal sealed class TimeoutSanityCheck : IDiagnosticCheck
     public string Name => "TimeoutSanity";
 
     /// <inheritdoc />
+    public string Description => "Validates timeout values are within acceptable ranges (positive, non-zero, reasonable limits)";
+
+    /// <inheritdoc />
     public Task<DiagnosticResult> RunAsync(ConnectionStringInfo info, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(info);
@@ -39,7 +42,7 @@ internal sealed class TimeoutSanityCheck : IDiagnosticCheck
         }
 
         static bool TryParseInt(string? text, out int parsed) =>
-            int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed);
+        int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed);
 
         // 1. Connect Timeout validation
         if (TryGet(out var connectTimeoutStr, "Connect Timeout", "Connection Timeout", "Timeout") && TryParseInt(connectTimeoutStr, out var connectTimeout))
@@ -47,17 +50,17 @@ internal sealed class TimeoutSanityCheck : IDiagnosticCheck
             if (connectTimeout < 0)
             {
                 result.AddError(
-                    $"Connect Timeout is {connectTimeout} seconds, which is negative and will cause immediate failure. Use a positive value.");
+                $"Connect Timeout is {connectTimeout} seconds, which is negative and will cause immediate failure. Use a positive value.");
             }
             else if (connectTimeout == 0)
             {
                 result.AddError(
-                    "Connect Timeout is set to 0, which means infinite timeout. This can cause application hangs. Use a positive value.");
+                "Connect Timeout is set to 0, which means infinite timeout. This can cause application hangs. Use a positive value.");
             }
             else if (connectTimeout > 300)
             {
                 result.AddWarning(
-                    $"Connect Timeout is {connectTimeout} seconds, which is greater than 300 seconds. Consider using a lower value to avoid hiding network issues.");
+                $"Connect Timeout is {connectTimeout} seconds, which is greater than 300 seconds. Consider using a lower value to avoid hiding network issues.");
             }
         }
 
@@ -67,17 +70,17 @@ internal sealed class TimeoutSanityCheck : IDiagnosticCheck
             if (cmdTimeout < 0)
             {
                 result.AddError(
-                    $"Command Timeout is {cmdTimeout} seconds, which is negative and will cause immediate failure. Use a positive value.");
+                $"Command Timeout is {cmdTimeout} seconds, which is negative and will cause immediate failure. Use a positive value.");
             }
             else if (cmdTimeout == 0)
             {
                 result.AddError(
-                    "Command Timeout is set to 0, which means infinite timeout. This can cause application hangs. Use a positive value.");
+                "Command Timeout is set to 0, which means infinite timeout. This can cause application hangs. Use a positive value.");
             }
             else if (cmdTimeout > 300)
             {
                 result.AddWarning(
-                    $"Command Timeout is {cmdTimeout} seconds, which is greater than 300 seconds. Consider using a lower value for better resource management.");
+                $"Command Timeout is {cmdTimeout} seconds, which is greater than 300 seconds. Consider using a lower value for better resource management.");
             }
         }
 

@@ -5,6 +5,11 @@ ConnectionStringRedactorTests.RunTests();
 
 var rootCommand = new RootCommand("Connection String Doctor - Diagnoses connection strings for common issues and compares them");
 
+// Define --list-checks option
+var listChecksOption = new Option<bool>(
+    name: "--list-checks",
+    description: "List all available diagnostic checks with their descriptions");
+
 // Define options for diagnose command
 var connectionStringOption = new Option<string>(
     name: "--connection-string",
@@ -224,10 +229,53 @@ normalizeCommand.SetHandler((context) =>
     }
 });
 
+// Create list-checks command
+var listChecksCommand = new Command("list-checks", "List all available diagnostic checks with their descriptions");
+listChecksCommand.AddOption(listChecksOption);
+
+listChecksCommand.SetHandler((context) =>
+{
+    try
+    {
+        // Get all available diagnostic checks
+        var checks = new IDiagnosticCheck[]
+        {
+            new DeprecatedKeywordCheck(),
+            new UnknownKeywordCheck(),
+            new DuplicateKeyCheck(),
+            new PoolConfigCheck(),
+            new TimeoutConfigCheck(),
+            new TimeoutSanityCheck(),
+            new DnsAndTcpCheck()
+        };
+
+        // Sort by name for consistent output
+        var sortedChecks = checks.OrderBy(c => c.Name, StringComparer.OrdinalIgnoreCase).ToList();
+
+        // Write output
+        Console.WriteLine("Available diagnostic checks:");
+        Console.WriteLine();
+        foreach (var check in sortedChecks)
+        {
+            Console.WriteLine($"  {check.Name}");
+            Console.WriteLine($"    {check.Description}");
+            Console.WriteLine();
+        }
+
+        Console.WriteLine($"Total: {sortedChecks.Count} checks");
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Error: {ex.Message}");
+        Environment.Exit(1);
+    }
+});
+
 // Add subcommands to root
 rootCommand.AddCommand(diagnoseCommand);
 rootCommand.AddCommand(compareCommand);
 rootCommand.AddCommand(normalizeCommand);
+rootCommand.AddCommand(listChecksCommand);
 
 return await rootCommand.InvokeAsync(args);
 

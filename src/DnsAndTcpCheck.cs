@@ -27,6 +27,9 @@ internal sealed class DnsAndTcpCheck : IDiagnosticCheck
     /// <inheritdoc />
     public string Name => "Reachability";
 
+        /// <inheritdoc />
+        public string Description => "Verifies DNS resolution and TCP reachability of the host";
+
     /// <inheritdoc />
     public async Task<DiagnosticResult> RunAsync(ConnectionStringInfo info, CancellationToken ct)
     {

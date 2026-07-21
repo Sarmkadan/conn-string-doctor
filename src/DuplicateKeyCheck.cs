@@ -18,6 +18,9 @@ internal sealed class DuplicateKeyCheck : IDiagnosticCheck
     public string Name => "DuplicateKeys";
 
     /// <inheritdoc />
+    public string Description => "Detects duplicate keys in connection strings and reports which value wins";
+
+    /// <inheritdoc />
     public Task<DiagnosticResult> RunAsync(ConnectionStringInfo info, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(info);

@@ -16,6 +16,9 @@ internal sealed class TimeoutConfigCheck : IDiagnosticCheck
     public string Name => "Timeout";
 
     /// <inheritdoc />
+    public string Description => "Validates timeout related settings in connection strings";
+
+    /// <inheritdoc />
     public Task<DiagnosticResult> RunAsync(ConnectionStringInfo info, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(info);
@@ -38,7 +41,7 @@ internal sealed class TimeoutConfigCheck : IDiagnosticCheck
         }
 
         static bool TryParseInt(string? text, out int parsed) =>
-            int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed);
+        int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed);
 
         // 1. Connect Timeout handling
         if (TryGet(out var timeoutStr, "Connect Timeout", "Connection Timeout", "Timeout") && TryParseInt(timeoutStr, out var timeout))

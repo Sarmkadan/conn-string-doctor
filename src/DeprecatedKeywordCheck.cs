@@ -16,6 +16,9 @@ internal sealed class DeprecatedKeywordCheck : IDiagnosticCheck
     /// <inheritdoc />
     public string Name => "DeprecatedKeywords";
 
+        /// <inheritdoc />
+        public string Description => "Detects deprecated/obsolete keywords in connection strings and suggests replacements";
+
     /// <summary>
     /// Known deprecated keywords for different database providers.
     /// </summary>
