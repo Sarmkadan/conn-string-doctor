@@ -24,7 +24,7 @@ var includeSuccessOption = new Option<bool>(
 
 var failOnOption = new Option<Severity>(
     name: "--fail-on",
-    description: "Exit with non-zero code if any diagnostic meets or exceeds this severity level (Info, Warning, Error)",
+    description: "Exit with code based on highest diagnostic severity: 0=ok (Info or lower), 1=warning, 2=error. If any diagnostic meets or exceeds this severity level, exit with corresponding code",
     getDefaultValue: () => Severity.Info);
 
 // Define options for compare command
@@ -126,10 +126,19 @@ else
         }
 
         // Check if we should fail based on severity
+        // Map severity to exit codes: 0=ok (Info or lower), 1=warning, 2=error
         var maxSeverity = results.Max(r => r.ResultSeverity);
-        if (maxSeverity >= failOnSeverity)
+        var exitCode = maxSeverity switch
         {
-            Environment.Exit(1);
+            Severity.Info => 0,
+            Severity.Warning => 1,
+            Severity.Error => 2,
+            _ => 0
+        };
+
+        if (exitCode > 0)
+        {
+            Environment.Exit(exitCode);
         }
     }
     catch (Exception ex)
