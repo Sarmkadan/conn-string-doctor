@@ -81,6 +81,7 @@ diagnoseCommand.SetHandler(async (context) =>
         var checks = new IDiagnosticCheck[]
         {
             new DeprecatedKeywordCheck(),
+            new UnknownKeywordCheck(),
             new DuplicateKeyCheck(),
             new PoolConfigCheck(),
             new TimeoutConfigCheck(),
