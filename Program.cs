@@ -1,4 +1,6 @@
 using System.CommandLine;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using ConnStringDoctor;
 
 ConnectionStringRedactorTests.RunTests();
@@ -17,7 +19,7 @@ var connectionStringOption = new Option<string>(
 
 var formatOption = new Option<string>(
     name: "--format",
-    description: "Output format (text, markdown, html)",
+    description: "Output format (text, markdown, html, json)",
     getDefaultValue: () => "text");
 
 var outputOption = new Option<FileInfo?>(
@@ -54,13 +56,13 @@ var showAllOption = new Option<bool>(
     getDefaultValue: () => false);
 
 var normalizeRedactOption = new Option<bool>(
-	name: "--redact",
-	description: "Redact sensitive information (passwords, tokens, etc.)",
-	getDefaultValue: () => true);
+    name: "--redact",
+    description: "Redact sensitive information (passwords, tokens, etc.)",
+    getDefaultValue: () => true);
 
 var normalizeConnectionStringOption = new Option<string>(
-	name: "--connection-string",
-	description: "The connection string to normalize");
+    name: "--connection-string",
+    description: "The connection string to normalize");
 
 // Create diagnose command
 var diagnoseCommand = new Command("diagnose", "Diagnose a connection string for common issues");
@@ -107,19 +109,23 @@ diagnoseCommand.SetHandler(async (context) =>
 
         // Output based on format
         string output;
-        if (format.Equals("markdown", StringComparison.OrdinalIgnoreCase))
+        if (format.Equals("json", StringComparison.OrdinalIgnoreCase))
+        {
+            output = FormatAsJson(results, includeSuccess);
+        }
+        else if (format.Equals("markdown", StringComparison.OrdinalIgnoreCase))
         {
             output = DiagnosticResultMarkdownRenderer.Render(results, includeSuccess);
-}
-else if (format.Equals("html", StringComparison.OrdinalIgnoreCase))
-{
-    output = DiagnosticResultHtmlRenderer.Render(results, includeSuccess);
-}
-else
-{
-    // Default text format
-    output = FormatAsText(results, includeSuccess);
-}
+        }
+        else if (format.Equals("html", StringComparison.OrdinalIgnoreCase))
+        {
+            output = DiagnosticResultHtmlRenderer.Render(results, includeSuccess);
+        }
+        else
+        {
+            // Default text format
+            output = FormatAsText(results, includeSuccess);
+        }
 
         // Write to output file or console
         if (outputFile != null)
@@ -257,8 +263,8 @@ listChecksCommand.SetHandler((context) =>
         Console.WriteLine();
         foreach (var check in sortedChecks)
         {
-            Console.WriteLine($"  {check.Name}");
-            Console.WriteLine($"    {check.Description}");
+            Console.WriteLine($" {check.Name}");
+            Console.WriteLine($" {check.Description}");
             Console.WriteLine();
         }
 
@@ -320,4 +326,29 @@ static string FormatAsText(List<DiagnosticResult> results, bool includeSuccess)
     }
 
     return builder.ToString();
+}
+
+static string FormatAsJson(List<DiagnosticResult> results, bool includeSuccess)
+{
+    var options = new JsonSerializerOptions
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        DefaultIgnoreCondition = includeSuccess ? JsonIgnoreCondition.WhenWritingNull : JsonIgnoreCondition.Never
+    };
+
+    var jsonResults = results
+        .Where(r => includeSuccess || !r.IsSuccess)
+        .Select(r => new
+        {
+            name = r.Name,
+            severity = r.ResultSeverity.ToString().ToLowerInvariant(),
+            message = r.Message,
+            isSuccess = r.IsSuccess,
+            errors = r.Errors.Count > 0 ? r.Errors.ToArray() : null,
+            warnings = r.Warnings.Count > 0 ? r.Warnings.ToArray() : null
+        })
+        .ToArray();
+
+    return JsonSerializer.Serialize(jsonResults, options);
 }
