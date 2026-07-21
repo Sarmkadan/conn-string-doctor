@@ -6,6 +6,23 @@ using System.Linq;
 namespace ConnStringDoctor
 {
     /// <summary>
+    /// Specifies the redaction mode for sensitive values in connection strings.
+    /// </summary>
+    public enum RedactionMode
+    {
+        /// <summary>
+        /// Completely masks the value with the specified mask string.
+        /// </summary>
+        Full,
+
+        /// <summary>
+        /// Partially masks the value, keeping the first 2 and last 2 characters visible.
+        /// For example: "password123" becomes "pa****rd"
+        /// </summary>
+        Partial
+    }
+
+    /// <summary>
     /// Provides utilities for redacting sensitive information from database connection strings.
     /// </summary>
     public static class ConnectionStringRedactor
@@ -45,9 +62,10 @@ namespace ConnStringDoctor
         /// Redacts all secret values in the supplied connection string.
         /// </summary>
         /// <param name="connectionString">The original connection string.</param>
-        /// <param name="mask">The mask to replace secret values with.</param>
+        /// <param name="mode">The redaction mode to use.</param>
+        /// <param name="mask">The mask to use when mode is Full.</param>
         /// <returns>The redacted connection string.</returns>
-        public static string Redact(string connectionString, string mask = "***")
+        public static string Redact(string connectionString, RedactionMode mode = RedactionMode.Full, string mask = "****")
         {
             if (string.IsNullOrWhiteSpace(connectionString))
                 return connectionString;
@@ -63,7 +81,8 @@ namespace ConnStringDoctor
                 {
                     if (IsSecretKey(key))
                     {
-                        builder[key] = mask;
+                        var value = builder[key]?.ToString();
+                        builder[key] = RedactValue(value, mode, mask);
                     }
                 }
 
@@ -80,9 +99,10 @@ namespace ConnStringDoctor
         /// Redacts all secret values in the supplied connection string and returns them as a dictionary.
         /// </summary>
         /// <param name="connectionString">The original connection string.</param>
-        /// <param name="mask">The mask to replace secret values with.</param>
-        /// <returns>A dictionary of keyword->value with sensitive values masked.</returns>
-        public static IReadOnlyDictionary<string, string> RedactToDictionary(string connectionString, string mask = "***")
+        /// <param name="mode">The redaction mode to use.</param>
+        /// <param name="mask">The mask to use when mode is Full.</param>
+        /// <returns>A dictionary of keyword->value with sensitive values redacted.</returns>
+        public static IReadOnlyDictionary<string, string> RedactToDictionary(string connectionString, RedactionMode mode = RedactionMode.Full, string mask = "****")
         {
             var result = new Dictionary<string, string>();
             if (string.IsNullOrWhiteSpace(connectionString))
@@ -100,7 +120,7 @@ namespace ConnStringDoctor
                     var value = builder[key]?.ToString();
                     if (IsSecretKey(key))
                     {
-                        result[key] = mask;
+                        result[key] = RedactValue(value, mode, mask);
                     }
                     else
                     {
@@ -178,6 +198,42 @@ namespace ConnStringDoctor
                 // If parsing fails, assume no secrets were detected.
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Redacts a single value according to the specified mode.
+        /// </summary>
+        /// <param name="value">The value to redact.</param>
+        /// <param name="mode">The redaction mode to use.</param>
+        /// <param name="mask">The mask to use when mode is Full.</param>
+        /// <returns>The redacted value.</returns>
+        private static string RedactValue(string value, RedactionMode mode, string mask)
+        {
+            if (string.IsNullOrEmpty(value))
+                return value;
+
+            return mode switch
+            {
+                RedactionMode.Full => mask,
+                RedactionMode.Partial => ApplyPartialRedaction(value, mask),
+                _ => mask
+            };
+        }
+
+        /// <summary>
+        /// Applies partial redaction to a value, keeping first 2 and last 2 characters visible.
+        /// </summary>
+        /// <param name="value">The value to redact.</param>
+        /// <param name="mask">The mask string to use between the visible characters.</param>
+        /// <returns>The partially redacted value.</returns>
+        private static string ApplyPartialRedaction(string value, string mask)
+        {
+            if (string.IsNullOrEmpty(value) || value.Length <= 4)
+                return mask;
+
+            var first2 = value[..2];
+            var last2 = value[^2..];
+            return $"{first2}{mask}{last2}";
         }
     }
 }

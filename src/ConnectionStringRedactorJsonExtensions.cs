@@ -32,7 +32,7 @@ namespace ConnStringDoctor
         {
             ArgumentNullException.ThrowIfNull(connectionString);
 
-            var redacted = ConnectionStringRedactor.Redact(connectionString, mask);
+            var redacted = ConnectionStringRedactor.Redact(connectionString, RedactionMode.Full, mask);
             var result = new { Original = connectionString, Redacted = redacted };
 
             return JsonSerializer.Serialize(result, indented ? _jsonOptionsIndented : _jsonOptions);

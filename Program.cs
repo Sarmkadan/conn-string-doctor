@@ -1,6 +1,8 @@
 using System.CommandLine;
 using ConnStringDoctor;
 
+ConnectionStringRedactorTests.RunTests();
+
 var rootCommand = new RootCommand("Connection String Doctor - Diagnoses connection strings for common issues and compares them");
 
 // Define options for diagnose command

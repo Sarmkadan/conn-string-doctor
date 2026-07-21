@@ -6,6 +6,10 @@ public static class TestRunner
     {
         Console.WriteLine("=== ProviderDetector Test Suite ===\n");
         ProviderDetectorTests.RunAll();
+
+        Console.WriteLine("\n=== ConnectionStringRedactor Test Suite ===\n");
+        ConnectionStringRedactorTests.RunTests();
+
         return 0;
     }
 }
