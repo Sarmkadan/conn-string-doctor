@@ -10,7 +10,7 @@ var connectionStringOption = new Option<string>(
 
 var formatOption = new Option<string>(
     name: "--format",
-    description: "Output format (text, markdown)",
+    description: "Output format (text, markdown, html)",
     getDefaultValue: () => "text");
 
 var outputOption = new Option<FileInfo?>(
@@ -103,12 +103,16 @@ diagnoseCommand.SetHandler(async (context) =>
         if (format.Equals("markdown", StringComparison.OrdinalIgnoreCase))
         {
             output = DiagnosticResultMarkdownRenderer.Render(results, includeSuccess);
-        }
-        else
-        {
-            // Default text format
-            output = FormatAsText(results, includeSuccess);
-        }
+}
+else if (format.Equals("html", StringComparison.OrdinalIgnoreCase))
+{
+    output = DiagnosticResultHtmlRenderer.Render(results, includeSuccess);
+}
+else
+{
+    // Default text format
+    output = FormatAsText(results, includeSuccess);
+}
 
         // Write to output file or console
         if (outputFile != null)
