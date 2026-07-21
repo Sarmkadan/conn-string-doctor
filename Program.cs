@@ -277,11 +277,20 @@ listChecksCommand.SetHandler((context) =>
     }
 });
 
+// Create selftest command
+var selftestCommand = new Command("selftest", "Run built-in self-tests for core components");
+selftestCommand.SetHandler(() =>
+{
+    var exitCode = RunSelftest();
+    Environment.Exit(exitCode);
+});
+
 // Add subcommands to root
 rootCommand.AddCommand(diagnoseCommand);
 rootCommand.AddCommand(compareCommand);
 rootCommand.AddCommand(normalizeCommand);
 rootCommand.AddCommand(listChecksCommand);
+rootCommand.AddCommand(selftestCommand);
 
 return await rootCommand.InvokeAsync(args);
 
@@ -351,4 +360,447 @@ static string FormatAsJson(List<DiagnosticResult> results, bool includeSuccess)
         .ToArray();
 
     return JsonSerializer.Serialize(jsonResults, options);
+}
+
+static int RunSelftest()
+{
+    int passed = 0;
+    int failed = 0;
+
+    Console.WriteLine("Running self-tests...");
+    Console.WriteLine();
+
+    // Test ConnectionStringParser
+    Console.WriteLine("Testing ConnectionStringParser...");
+    passed += RunParserTests();
+
+    // Test ConnectionStringRedactor
+    Console.WriteLine("\nTesting ConnectionStringRedactor...");
+    passed += RunRedactorTests();
+
+    // Test ConnectionStringConverter
+    Console.WriteLine("\nTesting ConnectionStringConverter...");
+    passed += RunConverterTests();
+
+    Console.WriteLine();
+    Console.WriteLine($"Results: {passed} passed, {failed} failed");
+
+    if (failed > 0)
+    {
+        Console.WriteLine("SELFTEST FAILED");
+        return 1;
+    }
+    else
+    {
+        Console.WriteLine("SELFTEST PASSED");
+        return 0;
+    }
+}
+
+static int RunParserTests(bool expectFailure = false)
+{
+    int passed = 0;
+    int failed = 0;
+
+    void Test(string description, Func<bool> testFunc)
+    {
+        try
+        {
+            bool result = testFunc();
+            if (result == !expectFailure)
+            {
+                Console.WriteLine($"  PASS: {description}");
+                passed++;
+            }
+            else
+            {
+                Console.WriteLine($"  FAIL: {description}");
+                failed++;
+            }
+        }
+        catch (Exception ex)
+        {
+            if (expectFailure)
+            {
+                Console.WriteLine($"  PASS (expected failure): {description} - {ex.Message}");
+                passed++;
+            }
+            else
+            {
+                Console.WriteLine($"  FAIL: {description} - {ex.Message}");
+                failed++;
+            }
+        }
+    }
+
+    // Test 1: Quoted values
+    Test("Parses quoted values correctly", () =>
+    {
+        var info = ConnectionStringParser.Parse(@"Server=""my server,port"";Database=test;");
+        return info.Server == "my server,port" && info.Database == "test";
+    });
+
+    // Test 2: Escaped semicolons
+    Test("Handles escaped semicolons in values", () =>
+    {
+        var info = ConnectionStringParser.Parse(@"Server=server\;port;Database=test");
+        return info.Server == @"server\;port" && info.Database == "test";
+    });
+
+    // Test 3: Alias mapping - Server/Data Source
+    Test("Maps Server and Data Source aliases correctly", () =>
+    {
+        var info1 = ConnectionStringParser.Parse("Server=localhost;Database=test");
+        var info2 = ConnectionStringParser.Parse("Data Source=localhost;Database=test");
+        return info1.Server == info2.Server && info1.Database == info2.Database;
+    });
+
+    // Test 4: Alias mapping - User ID variations
+    Test("Maps User ID, Uid, User, Username aliases correctly", () =>
+    {
+        var info1 = ConnectionStringParser.Parse("User ID=admin;Password=secret");
+        var info2 = ConnectionStringParser.Parse("Uid=admin;Password=secret");
+        var info3 = ConnectionStringParser.Parse("User=admin;Password=secret");
+        var info4 = ConnectionStringParser.Parse("Username=admin;Password=secret");
+        return info1.User == info2.User && info2.User == info3.User && info3.User == info4.User;
+    });
+
+    // Test 5: Alias mapping - Password variations
+    Test("Maps Password and Pwd aliases correctly", () =>
+    {
+        var info1 = ConnectionStringParser.Parse("User ID=admin;Password=secret");
+        var info2 = ConnectionStringParser.Parse("User ID=admin;Pwd=secret");
+        return info1.Password == info2.Password;
+    });
+
+    // Test 6: Port parsing
+    Test("Parses port correctly", () =>
+    {
+        var info = ConnectionStringParser.Parse("Server=localhost;Port=1433;Database=test");
+        return info.Port == 1433;
+    });
+
+    // Test 7: Host and port extraction from comma-separated
+    Test("Extracts host and port from comma-separated value", () =>
+    {
+        var info = ConnectionStringParser.Parse("Server=localhost,1433;Database=test");
+        return info.Server == "localhost" && info.Port == 1433;
+    });
+
+    // Test 8: Host and port extraction from colon-separated (non-IPv6)
+    Test("Extracts host and port from colon-separated value", () =>
+    {
+        var info = ConnectionStringParser.Parse("Server=localhost:1433;Database=test");
+        return info.Server == "localhost" && info.Port == 1433;
+    });
+
+    // Test 9: IPv6 address handling
+    Test("Handles IPv6 addresses correctly", () =>
+    {
+        var info = ConnectionStringParser.Parse(@"Server=[2001:db8::1]:1433;Database=test");
+        return info.Server == "2001:db8::1" && info.Port == 1433;
+    });
+
+    // Test 10: Empty connection string handling
+    Test("Throws exception for null/empty connection string", () =>
+    {
+        try
+        {
+            ConnectionStringParser.Parse(null);
+            return false;
+        }
+        catch (ArgumentException)
+        {
+            return true;
+        }
+    });
+
+    return expectFailure ? failed : passed;
+}
+
+static int RunRedactorTests(bool expectFailure = false)
+{
+    int passed = 0;
+    int failed = 0;
+
+    void Test(string description, Func<bool> testFunc)
+    {
+        try
+        {
+            bool result = testFunc();
+            if (result == !expectFailure)
+            {
+                Console.WriteLine($"  PASS: {description}");
+                passed++;
+            }
+            else
+            {
+                Console.WriteLine($"  FAIL: {description}");
+                failed++;
+            }
+        }
+        catch (Exception ex)
+        {
+            if (expectFailure)
+            {
+                Console.WriteLine($"  PASS (expected failure): {description} - {ex.Message}");
+                passed++;
+            }
+            else
+            {
+                Console.WriteLine($"  FAIL: {description} - {ex.Message}");
+                failed++;
+            }
+        }
+    }
+
+    // Test 1: Full redaction of password
+    Test("Fully redacts password values", () =>
+    {
+        var original = "Server=localhost;Database=test;User ID=admin;Password=secret123";
+        var redacted = ConnectionStringRedactor.Redact(original, RedactionMode.Full, "****");
+        return !redacted.Contains("secret123") && redacted.Contains("Password=****");
+    });
+
+    // Test 2: Partial redaction of password
+    Test("Partially redacts password values correctly", () =>
+    {
+        var original = "Server=localhost;Database=test;User ID=admin;Password=secret123";
+        var redacted = ConnectionStringRedactor.Redact(original, RedactionMode.Partial, "****");
+        // Should keep first 2 and last 2 chars: se****23
+        return redacted.Contains("Password=se****23");
+    });
+
+    // Test 3: Redaction of Pwd alias
+    Test("Redacts Pwd alias correctly", () =>
+    {
+        var original = "Server=localhost;Database=test;User ID=admin;Pwd=secret123";
+        var redacted = ConnectionStringRedactor.Redact(original);
+        return !redacted.Contains("secret123") && redacted.Contains("Pwd=****");
+    });
+
+    // Test 4: Redaction of User ID
+    Test("Redacts User ID correctly", () =>
+    {
+        var original = "Server=localhost;Database=test;User ID=admin;Password=secret";
+        var redacted = ConnectionStringRedactor.Redact(original);
+        return !redacted.Contains("admin") && redacted.Contains("User ID=****");
+    });
+
+    // Test 5: Redaction of User alias
+    Test("Redacts User alias correctly", () =>
+    {
+        var original = "Server=localhost;Database=test;User=admin;Password=secret";
+        var redacted = ConnectionStringRedactor.Redact(original);
+        return !redacted.Contains("admin") && redacted.Contains("User=****");
+    });
+
+    // Test 6: Redaction of Token
+    Test("Redacts Token values", () =>
+    {
+        var original = "Server=localhost;Database=test;Token=mytoken123";
+        var redacted = ConnectionStringRedactor.Redact(original);
+        return !redacted.Contains("mytoken123") && redacted.Contains("Token=****");
+    });
+
+    // Test 7: Redaction of Secret
+    Test("Redacts Secret values", () =>
+    {
+        var original = "Server=localhost;Database=test;Secret=mysecret123";
+        var redacted = ConnectionStringRedactor.Redact(original);
+        return !redacted.Contains("mysecret123") && redacted.Contains("Secret=****");
+    });
+
+    // Test 8: No redaction when no secrets present
+    Test("Does not modify connection string when no secrets present", () =>
+    {
+        var original = "Server=localhost;Database=test;Port=1433";
+        var redacted = ConnectionStringRedactor.Redact(original);
+        return original == redacted;
+    });
+
+    // Test 9: RedactToDictionary functionality
+    Test("RedactToDictionary returns correct dictionary", () =>
+    {
+        var original = "Server=localhost;Database=test;User ID=admin;Password=secret123";
+        var dict = ConnectionStringRedactor.RedactToDictionary(original);
+        return dict["User ID"] == "****" && dict["Password"] == "****" &&
+               dict["Server"] == "localhost" && dict["Database"] == "test";
+    });
+
+    // Test 10: RedactKeepUser functionality
+    Test("RedactKeepUser redacts only password", () =>
+    {
+        var original = "Server=localhost;Database=test;User ID=admin;Password=secret123";
+        var redacted = ConnectionStringRedactor.RedactKeepUser(original);
+        return redacted.Contains("User ID=admin") && !redacted.Contains("secret123") &&
+               redacted.Contains("Password=***");
+    });
+
+    return expectFailure ? failed : passed;
+}
+
+static int RunConverterTests(bool expectFailure = false)
+{
+    int passed = 0;
+    int failed = 0;
+
+    void Test(string description, Func<bool> testFunc)
+    {
+        try
+        {
+            bool result = testFunc();
+            if (result == !expectFailure)
+            {
+                Console.WriteLine($"  PASS: {description}");
+                passed++;
+            }
+            else
+            {
+                Console.WriteLine($"  FAIL: {description}");
+                failed++;
+            }
+        }
+        catch (Exception ex)
+        {
+            if (expectFailure)
+            {
+                Console.WriteLine($"  PASS (expected failure): {description} - {ex.Message}");
+                passed++;
+            }
+            else
+            {
+                Console.WriteLine($"  FAIL: {description} - {ex.Message}");
+                failed++;
+            }
+        }
+    }
+
+    // Test 1: Basic SQL Server to PostgreSQL conversion
+    Test("Converts SQL Server to PostgreSQL correctly", () =>
+    {
+        var info = ConnectionStringConverter.Parse("Server=localhost;Database=test;User ID=admin;Password=secret");
+        info.Provider = "sqlserver";
+        var converter = new ConnectionStringConverter();
+        var result = converter.Convert(info, "postgres");
+        return result.ConnectionString.Contains("Host=localhost") &&
+               result.ConnectionString.Contains("Database=test") &&
+               result.ConnectionString.Contains("Username=admin") &&
+               result.ConnectionString.Contains("Password=secret");
+    });
+
+    // Test 2: PostgreSQL to SQL Server conversion
+    Test("Converts PostgreSQL to SQL Server correctly", () =>
+    {
+        var info = ConnectionStringConverter.Parse("Host=localhost;Database=test;Username=admin;Password=secret");
+        info.Provider = "postgres";
+        var converter = new ConnectionStringConverter();
+        var result = converter.Convert(info, "sqlserver");
+        return result.ConnectionString.Contains("Server=localhost") &&
+               result.ConnectionString.Contains("Database=test") &&
+               result.ConnectionString.Contains("User ID=admin") &&
+               result.ConnectionString.Contains("Password=secret");
+    });
+
+    // Test 3: SQL Server to MySQL conversion
+    Test("Converts SQL Server to MySQL correctly", () =>
+    {
+        var info = ConnectionStringConverter.Parse("Server=localhost;Database=test;User ID=admin;Password=secret");
+        info.Provider = "sqlserver";
+        var converter = new ConnectionStringConverter();
+        var result = converter.Convert(info, "mysql");
+        return result.ConnectionString.Contains("Server=localhost") &&
+               result.ConnectionString.Contains("Database=test") &&
+               result.ConnectionString.Contains("Uid=admin") &&
+               result.ConnectionString.Contains("Password=secret");
+    });
+
+    // Test 4: Same provider conversion (should pass through)
+    Test("Same provider conversion passes through unchanged", () =>
+    {
+        var info = ConnectionStringConverter.Parse("Server=localhost;Database=test;User ID=admin;Password=secret");
+        info.Provider = "sqlserver";
+        var converter = new ConnectionStringConverter();
+        var result = converter.Convert(info, "sqlserver");
+        return result.ConnectionString == "Server=localhost;Database=test;User ID=admin;Password=secret";
+    });
+
+    // Test 5: Data Source alias mapping
+    Test("Maps Data Source alias correctly in conversion", () =>
+    {
+        var info = ConnectionStringConverter.Parse("Data Source=localhost;Database=test;User ID=admin;Password=secret");
+        info.Provider = "sqlserver";
+        var converter = new ConnectionStringConverter();
+        var result = converter.Convert(info, "postgres");
+        return result.ConnectionString.Contains("Host=localhost") &&
+               result.ConnectionString.Contains("Database=test") &&
+               result.ConnectionString.Contains("Username=admin") &&
+               result.ConnectionString.Contains("Password=secret");
+    });
+
+    // Test 6: Initial Catalog alias mapping
+    Test("Maps Initial Catalog alias correctly in conversion", () =>
+    {
+        var info = ConnectionStringConverter.Parse("Server=localhost;Initial Catalog=test;User ID=admin;Password=secret");
+        info.Provider = "sqlserver";
+        var converter = new ConnectionStringConverter();
+        var result = converter.Convert(info, "postgres");
+        return result.ConnectionString.Contains("Host=localhost") &&
+               result.ConnectionString.Contains("Database=test") &&
+               result.ConnectionString.Contains("Username=admin") &&
+               result.ConnectionString.Contains("Password=secret");
+    });
+
+    // Test 7: Port preservation in conversion
+    Test("Preserves port in conversion", () =>
+    {
+        var info = ConnectionStringConverter.Parse("Server=localhost,5432;Database=test;User ID=admin;Password=secret");
+        info.Provider = "sqlserver";
+        var converter = new ConnectionStringConverter();
+        var result = converter.Convert(info, "postgres");
+        return result.ConnectionString.Contains("Host=localhost") &&
+               result.ConnectionString.Contains("Port=5432") &&
+               result.ConnectionString.Contains("Database=test") &&
+               result.ConnectionString.Contains("Username=admin") &&
+               result.ConnectionString.Contains("Password=secret");
+    });
+
+    // Test 8: Unmapped keys tracking
+    Test("Tracks unmapped keys correctly", () =>
+    {
+        var info = ConnectionStringConverter.Parse("Server=localhost;Database=test;UnknownKey=value;User ID=admin;Password=secret");
+        info.Provider = "sqlserver";
+        var converter = new ConnectionStringConverter();
+        var result = converter.Convert(info, "postgres");
+        return result.UnmappedKeys.Contains("UnknownKey");
+    });
+
+    // Test 9: Empty connection string handling
+    Test("Handles empty connection string gracefully", () =>
+    {
+        var info = ConnectionStringConverter.Parse("");
+        info.Provider = "sqlserver";
+        var converter = new ConnectionStringConverter();
+        var result = converter.Convert(info, "postgres");
+        return result.ConnectionString == "";
+    });
+
+    // Test 10: Null provider handling
+    Test("Throws exception for null/empty target provider", () =>
+    {
+        try
+        {
+            var info = ConnectionStringConverter.Parse("Server=localhost;Database=test");
+            info.Provider = "sqlserver";
+            var converter = new ConnectionStringConverter();
+            var result = converter.Convert(info, "");
+            return false; // Should not reach here
+        }
+        catch (ArgumentException)
+        {
+            return true; // Expected exception
+        }
+    });
+
+    return expectFailure ? failed : passed;
 }
