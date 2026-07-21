@@ -10,6 +10,11 @@ internal interface IDiagnosticCheck
     string Name { get; }
 
     /// <summary>
+    /// Gets the description of the diagnostic check.
+    /// </summary>
+    string Description { get; }
+
+    /// <summary>
     /// Runs the diagnostic check asynchronously.
     /// </summary>
     /// <param name="info">Parsed connection string information.</param>
