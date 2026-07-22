@@ -1,0 +1,604 @@
+using Xunit;
+
+namespace ConnStringDoctor.Tests;
+
+public class ConnectionStringConverterTests
+{
+    [Fact]
+    public void Parse_WithNullConnectionString_ReturnsEmptyInfo()
+    {
+        // Act
+        var result = ConnectionStringConverter.Parse(null);
+
+        // Assert
+        Assert.Equal(string.Empty, result.Provider);
+        Assert.Empty(result.OriginalParts);
+    }
+
+    [Fact]
+    public void Parse_WithEmptyConnectionString_ReturnsEmptyInfo()
+    {
+        // Act
+        var result = ConnectionStringConverter.Parse(string.Empty);
+
+        // Assert
+        Assert.Equal(string.Empty, result.Provider);
+        Assert.Empty(result.OriginalParts);
+    }
+
+    [Fact]
+    public void Parse_WithWhitespaceConnectionString_ReturnsEmptyInfo()
+    {
+        // Act
+        var result = ConnectionStringConverter.Parse("   ");
+
+        // Assert
+        Assert.Equal(string.Empty, result.Provider);
+        Assert.Empty(result.OriginalParts);
+    }
+
+    [Fact]
+    public void Parse_WithSimpleConnectionString_ParsesKeyValuePairs()
+    {
+        // Arrange
+        var connectionString = "Server=localhost;Database=testdb;User ID=admin;Password=secret";
+
+        // Act
+        var result = ConnectionStringConverter.Parse(connectionString);
+
+        // Assert
+        Assert.Equal(string.Empty, result.Provider);
+        Assert.Equal(4, result.OriginalParts.Count);
+        Assert.Equal("localhost", result.OriginalParts["Server"]);
+        Assert.Equal("testdb", result.OriginalParts["Database"]);
+        Assert.Equal("admin", result.OriginalParts["User ID"]);
+        Assert.Equal("secret", result.OriginalParts["Password"]);
+    }
+
+    [Fact]
+    public void Parse_WithQuotedValues_ParsesCorrectly()
+    {
+        // Arrange
+        var connectionString = "Server=my server;Database=my-db;User ID=my user;Password=my password";
+
+        // Act
+        var result = ConnectionStringConverter.Parse(connectionString);
+
+        // Assert
+        Assert.Equal(4, result.OriginalParts.Count);
+        Assert.Equal("my server", result.OriginalParts["Server"]);
+        Assert.Equal("my-db", result.OriginalParts["Database"]);
+        Assert.Equal("my user", result.OriginalParts["User ID"]);
+        Assert.Equal("my password", result.OriginalParts["Password"]);
+    }
+
+    [Fact]
+    public void Parse_WithDuplicateKeys_LastValueWins()
+    {
+        // Arrange
+        var connectionString = "Server=server1;Server=server2;Database=testdb";
+
+        // Act
+        var result = ConnectionStringConverter.Parse(connectionString);
+
+        // Assert
+        Assert.Equal(2, result.OriginalParts.Count);
+        Assert.Equal("server2", result.OriginalParts["Server"]);
+        Assert.Equal("testdb", result.OriginalParts["Database"]);
+    }
+
+    [Fact]
+    public void TryParse_WithValidConnectionString_ReturnsTrueAndInfo()
+    {
+        // Arrange
+        var connectionString = "Server=localhost;Database=testdb";
+
+        // Act
+        var success = ConnectionStringConverter.TryParse(connectionString, out var result);
+
+        // Assert
+        Assert.True(success);
+        Assert.NotNull(result);
+        Assert.Equal(2, result!.OriginalParts.Count);
+    }
+
+    [Fact]
+    public void TryParse_WithInvalidConnectionString_ReturnsFalseAndNull()
+    {
+        // Arrange - This should throw an exception that TryParse catches
+        var connectionString = "This is not a valid connection string";
+
+        // Act
+        var success = ConnectionStringConverter.TryParse(connectionString, out var result);
+
+        // Assert
+        Assert.False(success);
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void Convert_SameProvider_PassesThroughAllKeys()
+    {
+        // Arrange
+        var connectionString = "Server=localhost;Database=testdb;User ID=admin;Password=secret";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "sqlserver";
+
+        // Act
+        var result = ConnectionStringConverter.Convert(info, "sqlserver");
+
+        // Assert
+        Assert.Equal("Server=localhost;Database=testdb;User ID=admin;Password=secret", result.ConnectionString);
+        Assert.Empty(result.UnmappedKeys);
+        Assert.Empty(result.Warnings);
+    }
+
+    [Fact]
+    public void Convert_SameProviderDifferentCase_PassesThroughAllKeys()
+    {
+        // Arrange
+        var connectionString = "Server=localhost;Database=testdb";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "POSTGRES";
+
+        // Act
+        var result = ConnectionStringConverter.Convert(info, "Postgres");
+
+        // Assert
+        Assert.Equal("Server=localhost;Database=testdb", result.ConnectionString);
+        Assert.Empty(result.UnmappedKeys);
+        Assert.Empty(result.Warnings);
+    }
+
+    [Fact]
+    public void Convert_SqlServerToPostgres_MapsKeysCorrectly()
+    {
+        // Arrange
+        var connectionString = "Server=localhost;Database=testdb;User ID=admin;Password=secret;Port=5432";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "sqlserver";
+
+        // Act
+        var result = ConnectionStringConverter.Convert(info, "postgres");
+
+        // Assert
+        Assert.Equal("Host=localhost;Database=testdb;Username=admin;Password=secret;Port=5432", result.ConnectionString);
+        Assert.Empty(result.UnmappedKeys);
+        Assert.Empty(result.Warnings);
+    }
+
+    [Fact]
+    public void Convert_PostgresToSqlServer_MapsKeysCorrectly()
+    {
+        // Arrange
+        var connectionString = "Host=localhost;Database=testdb;Username=admin;Password=secret;Port=5432";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "postgres";
+
+        // Act
+        var result = ConnectionStringConverter.Convert(info, "sqlserver");
+
+        // Assert
+        Assert.Equal("Server=localhost;Database=testdb;User ID=admin;Password=secret;Port=5432", result.ConnectionString);
+        Assert.Empty(result.UnmappedKeys);
+        Assert.Empty(result.Warnings);
+    }
+
+    [Fact]
+    public void Convert_SqlServerToMySql_MapsKeysCorrectly()
+    {
+        // Arrange
+        var connectionString = "Server=localhost;Database=testdb;User ID=admin;Password=secret;Port=3306";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "sqlserver";
+
+        // Act
+        var result = ConnectionStringConverter.Convert(info, "mysql");
+
+        // Assert
+        Assert.Equal("Server=localhost;Database=testdb;Uid=admin;Password=secret;Port=3306", result.ConnectionString);
+        Assert.Empty(result.UnmappedKeys);
+        Assert.Empty(result.Warnings);
+    }
+
+    [Fact]
+    public void Convert_MySqlToSqlServer_MapsKeysCorrectly()
+    {
+        // Arrange
+        var connectionString = "Server=localhost;Database=testdb;Uid=admin;Password=secret;Port=3306";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "mysql";
+
+        // Act
+        var result = ConnectionStringConverter.Convert(info, "sqlserver");
+
+        // Assert
+        Assert.Equal("Server=localhost;Database=testdb;User ID=admin;Password=secret;Port=3306", result.ConnectionString);
+        Assert.Empty(result.UnmappedKeys);
+        Assert.Empty(result.Warnings);
+    }
+
+    [Fact]
+    public void Convert_SqliteToGeneric_PassesThrough()
+    {
+        // Arrange
+        var connectionString = "Data Source=/path/to/db;Mode=ReadWrite";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "sqlite";
+
+        // Act
+        var result = ConnectionStringConverter.Convert(info, "generic");
+
+        // Assert
+        Assert.Equal("Data Source=/path/to/db;Mode=ReadWrite", result.ConnectionString);
+        Assert.Empty(result.UnmappedKeys);
+        Assert.Empty(result.Warnings);
+    }
+
+    [Fact]
+    public void Convert_GenericToSqlite_PassesThrough()
+    {
+        // Arrange
+        var connectionString = "Data Source=/path/to/db;Mode=ReadWrite";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "generic";
+
+        // Act
+        var result = ConnectionStringConverter.Convert(info, "sqlite");
+
+        // Assert
+        Assert.Equal("Data Source=/path/to/db;Mode=ReadWrite", result.ConnectionString);
+        Assert.Empty(result.UnmappedKeys);
+        Assert.Empty(result.Warnings);
+    }
+
+    [Fact]
+    public void Convert_WithUnmappedKeys_ReportsUnmappedAndWarning()
+    {
+        // Arrange - SQL Server connection string with SQLite-specific key
+        var connectionString = "Server=localhost;Database=testdb;Data Source=/path/to/db";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "sqlserver";
+
+        // Act
+        var result = ConnectionStringConverter.Convert(info, "postgres");
+
+        // Assert
+        Assert.Equal("Host=localhost;Database=testdb", result.ConnectionString);
+        Assert.Single(result.UnmappedKeys);
+        Assert.Contains("Data Source", result.UnmappedKeys);
+        Assert.Single(result.Warnings);
+        Assert.Contains("Data Source", result.Warnings[0]);
+    }
+
+    [Fact]
+    public void Convert_WithMultipleUnmappedKeys_ReportsAll()
+    {
+        // Arrange
+        var connectionString = "Server=localhost;Database=testdb;UnknownKey1=value1;UnknownKey2=value2";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "sqlserver";
+
+        // Act
+        var result = ConnectionStringConverter.Convert(info, "postgres");
+
+        // Assert
+        Assert.Equal("Host=localhost;Database=testdb", result.ConnectionString);
+        Assert.Equal(2, result.UnmappedKeys.Count);
+        Assert.Contains("UnknownKey1", result.UnmappedKeys);
+        Assert.Contains("UnknownKey2", result.UnmappedKeys);
+        Assert.Equal(2, result.Warnings.Count);
+    }
+
+    [Fact]
+    public void Convert_WithCommonKeywords_UsesFallbackMappings()
+    {
+        // Arrange - SQL Server connection string using common keywords
+        var connectionString = "Data Source=localhost;Initial Catalog=testdb;User=admin;Pwd=secret";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "sqlserver";
+
+        // Act
+        var result = ConnectionStringConverter.Convert(info, "postgres");
+
+        // Assert
+        Assert.Equal("Host=localhost;Database=testdb;Username=admin;Password=secret", result.ConnectionString);
+        Assert.Empty(result.UnmappedKeys);
+        Assert.Empty(result.Warnings);
+    }
+
+    [Fact]
+    public void Convert_WithEncryptToSslMode_MapsCorrectly()
+    {
+        // Arrange
+        var connectionString = "Server=localhost;Encrypt=true";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "sqlserver";
+
+        // Act
+        var result = ConnectionStringConverter.Convert(info, "postgres");
+
+        // Assert
+        Assert.Equal("Host=localhost;SSL Mode=true", result.ConnectionString);
+        Assert.Empty(result.UnmappedKeys);
+        Assert.Empty(result.Warnings);
+    }
+
+    [Fact]
+    public void Convert_WithTrustServerCertificate_MapsToSslMode()
+    {
+        // Arrange
+        var connectionString = "Server=localhost;Trust Server Certificate=true";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "sqlserver";
+
+        // Act
+        var result = ConnectionStringConverter.Convert(info, "postgres");
+
+        // Assert
+        Assert.Equal("Host=localhost;SSL Mode=true", result.ConnectionString);
+        Assert.Empty(result.UnmappedKeys);
+        Assert.Empty(result.Warnings);
+    }
+
+    [Fact]
+    public void Convert_WithSslMode_MapsToEncrypt()
+    {
+        // Arrange
+        var connectionString = "Host=localhost;SSL Mode=require";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "postgres";
+
+        // Act
+        var result = ConnectionStringConverter.Convert(info, "sqlserver");
+
+        // Assert
+        Assert.Equal("Server=localhost;Encrypt=require", result.ConnectionString);
+        Assert.Empty(result.UnmappedKeys);
+        Assert.Empty(result.Warnings);
+    }
+
+    [Fact]
+    public void Convert_WithMssqlAlias_RecognizesSqlServerProvider()
+    {
+        // Arrange
+        var connectionString = "Server=localhost;Database=testdb";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "mssql";
+
+        // Act
+        var result = ConnectionStringConverter.Convert(info, "postgres");
+
+        // Assert
+        Assert.Equal("Host=localhost;Database=testdb", result.ConnectionString);
+        Assert.Empty(result.UnmappedKeys);
+    }
+
+    [Fact]
+    public void Convert_WithNpgsqlAlias_RecognizesPostgresProvider()
+    {
+        // Arrange
+        var connectionString = "Host=localhost;Database=testdb";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "npgsql";
+
+        // Act
+        var result = ConnectionStringConverter.Convert(info, "sqlserver");
+
+        // Assert
+        Assert.Equal("Server=localhost;Database=testdb", result.ConnectionString);
+        Assert.Empty(result.UnmappedKeys);
+    }
+
+    [Fact]
+    public void Convert_WithMariaDbAlias_RecognizesMySqlProvider()
+    {
+        // Arrange
+        var connectionString = "Server=localhost;Database=testdb";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "mariadb";
+
+        // Act
+        var result = ConnectionStringConverter.Convert(info, "sqlserver");
+
+        // Assert
+        Assert.Equal("Server=localhost;Database=testdb", result.ConnectionString);
+        Assert.Empty(result.UnmappedKeys);
+    }
+
+    [Fact]
+    public void Convert_WithSqlitepclrawAlias_RecognizesSqliteProvider()
+    {
+        // Arrange
+        var connectionString = "Data Source=/path/to/db";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "sqlitepclraw";
+
+        // Act
+        var result = ConnectionStringConverter.Convert(info, "generic");
+
+        // Assert
+        Assert.Equal("Data Source=/path/to/db", result.ConnectionString);
+        Assert.Empty(result.UnmappedKeys);
+    }
+
+    [Fact]
+    public void ConversionResult_WithNullParameters_HandlesGracefully()
+    {
+        // Act
+        var result = new ConnectionStringConverter.ConversionResult(null, null, null);
+
+        // Assert
+        Assert.Equal(string.Empty, result.ConnectionString);
+        Assert.Empty(result.UnmappedKeys);
+        Assert.Empty(result.Warnings);
+    }
+
+    [Fact]
+    public void ConversionResult_PropertiesAreReadable()
+    {
+        // Arrange
+        var connectionString = "Server=localhost";
+        var unmapped = new[] { "UnknownKey" };
+        var warnings = new[] { "Warning message" };
+
+        // Act
+        var result = new ConnectionStringConverter.ConversionResult(connectionString, unmapped, warnings);
+
+        // Assert
+        Assert.Equal("Server=localhost", result.ConnectionString);
+        Assert.Single(result.UnmappedKeys);
+        Assert.Equal("UnknownKey", result.UnmappedKeys[0]);
+        Assert.Single(result.Warnings);
+        Assert.Equal("Warning message", result.Warnings[0]);
+    }
+
+    [Fact]
+    public void Parse_WithComplexConnectionString_ParsesAllParts()
+    {
+        // Arrange
+        var connectionString = "Server=my server,192.168.1.1;Database=test-db;User ID=my user;Password=pass@word#123;Port=1433;Encrypt=True;Trust Server Certificate=False";
+
+        // Act
+        var result = ConnectionStringConverter.Parse(connectionString);
+
+        // Assert
+        Assert.Equal(7, result.OriginalParts.Count);
+        Assert.Equal("my server,192.168.1.1", result.OriginalParts["Server"]);
+        Assert.Equal("test-db", result.OriginalParts["Database"]);
+        Assert.Equal("my user", result.OriginalParts["User ID"]);
+        Assert.Equal("pass@word#123", result.OriginalParts["Password"]);
+        Assert.Equal("1433", result.OriginalParts["Port"]);
+        Assert.Equal("True", result.OriginalParts["Encrypt"]);
+        Assert.Equal("False", result.OriginalParts["Trust Server Certificate"]);
+    }
+
+    [Fact]
+    public void Convert_SemanticRoundTrip_SqlServerToPostgresAndBack()
+    {
+        // Arrange - Original SQL Server connection string
+        var original = "Server=localhost,192.168.1.1;Database=MyAppDB;User ID=appuser;Password=P@ssw0rd!;Port=1433;Encrypt=True";
+
+        // Act - Convert to PostgreSQL
+        var info1 = ConnectionStringConverter.Parse(original);
+        info1.Provider = "sqlserver";
+        var postgres = ConnectionStringConverter.Convert(info1, "postgres");
+
+        // Assert - PostgreSQL conversion
+        Assert.Equal("Host=localhost,192.168.1.1;Database=MyAppDB;Username=appuser;Password=P@ssw0rd!;Port=1433;SSL Mode=True", postgres.ConnectionString);
+        Assert.Empty(postgres.UnmappedKeys);
+        Assert.Empty(postgres.Warnings);
+
+        // Act - Convert back to SQL Server
+        var info2 = ConnectionStringConverter.Parse(postgres.ConnectionString);
+        info2.Provider = "postgres";
+        var sqlserver = ConnectionStringConverter.Convert(info2, "sqlserver");
+
+        // Assert - Round-trip conversion
+        Assert.Equal("Server=localhost,192.168.1.1;Database=MyAppDB;User ID=appuser;Password=P@ssw0rd!;Port=1433;Encrypt=True", sqlserver.ConnectionString);
+        Assert.Empty(sqlserver.UnmappedKeys);
+        Assert.Empty(sqlserver.Warnings);
+    }
+
+    [Fact]
+    public void Convert_SemanticRoundTrip_SqlServerToMySqlAndBack()
+    {
+        // Arrange - Original SQL Server connection string
+        var original = "Server=db.example.com;Database=ProductionDB;User ID=admin;Password=Secret123;Port=3306";
+
+        // Act - Convert to MySQL
+        var info1 = ConnectionStringConverter.Parse(original);
+        info1.Provider = "sqlserver";
+        var mysql = ConnectionStringConverter.Convert(info1, "mysql");
+
+        // Assert - MySQL conversion
+        Assert.Equal("Server=db.example.com;Database=ProductionDB;Uid=admin;Password=Secret123;Port=3306", mysql.ConnectionString);
+        Assert.Empty(mysql.UnmappedKeys);
+        Assert.Empty(mysql.Warnings);
+
+        // Act - Convert back to SQL Server
+        var info2 = ConnectionStringConverter.Parse(mysql.ConnectionString);
+        info2.Provider = "mysql";
+        var sqlserver = ConnectionStringConverter.Convert(info2, "sqlserver");
+
+        // Assert - Round-trip conversion
+        Assert.Equal("Server=db.example.com;Database=ProductionDB;User ID=admin;Password=Secret123;Port=3306", sqlserver.ConnectionString);
+        Assert.Empty(sqlserver.UnmappedKeys);
+        Assert.Empty(sqlserver.Warnings);
+    }
+
+    [Fact]
+    public void Convert_EmptyProvider_UsesGenericProvider()
+    {
+        // Arrange
+        var connectionString = "Server=localhost;Database=testdb";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = string.Empty;
+
+        // Act - Convert from generic to PostgreSQL
+        var result = ConnectionStringConverter.Convert(info, "postgres");
+
+        // Assert - Should still work with generic provider
+        Assert.Equal("Host=localhost;Database=testdb", result.ConnectionString);
+        Assert.Empty(result.UnmappedKeys);
+    }
+
+    [Fact]
+    public void Convert_WhitespaceProvider_TrimsAndUsesGenericProvider()
+    {
+        // Arrange
+        var connectionString = "Server=localhost;Database=testdb";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "  ";
+
+        // Act
+        var result = ConnectionStringConverter.Convert(info, "postgres");
+
+        // Assert
+        Assert.Equal("Host=localhost;Database=testdb", result.ConnectionString);
+        Assert.Empty(result.UnmappedKeys);
+    }
+
+    [Fact]
+    public void Convert_NullTargetProvider_ThrowsArgumentException()
+    {
+        // Arrange
+        var connectionString = "Server=localhost";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "sqlserver";
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => ConnectionStringConverter.Convert(info, null!));
+    }
+
+    [Fact]
+    public void Convert_EmptyTargetProvider_ThrowsArgumentException()
+    {
+        // Arrange
+        var connectionString = "Server=localhost";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "sqlserver";
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => ConnectionStringConverter.Convert(info, ""));
+    }
+
+    [Fact]
+    public void Convert_WhitespaceTargetProvider_ThrowsArgumentException()
+    {
+        // Arrange
+        var connectionString = "Server=localhost";
+        var info = ConnectionStringConverter.Parse(connectionString);
+        info.Provider = "sqlserver";
+
+        // Act & Assert
+        Assert.Throws<ArgumentException>(() => ConnectionStringConverter.Convert(info, "   "));
+    }
+
+    [Fact]
+    public void Convert_NullSource_ThrowsArgumentNullException()
+    {
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => ConnectionStringConverter.Convert(null!, "postgres"));
+    }
+}
