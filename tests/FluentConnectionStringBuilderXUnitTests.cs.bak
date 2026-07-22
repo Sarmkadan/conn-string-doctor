@@ -1,0 +1,446 @@
+using Xunit;
+
+namespace ConnStringDoctor;
+
+/// <summary>
+/// xUnit tests for FluentConnectionStringBuilder fluent interface and connection string building.
+/// </summary>
+public class FluentConnectionStringBuilderXUnitTests
+{
+    [Fact]
+    public void BasicChaining_SqlServer_ReturnsCorrectConnectionString()
+    {
+        // Arrange
+        var builder = FluentConnectionStringBuilder.For("sqlserver")
+            .WithHost("localhost")
+            .WithDatabase("testdb")
+            .WithCredentials("user", "pass")
+            .WithTimeout(30);
+
+        // Act
+        string result = builder.Build();
+
+        // Assert
+        Assert.Contains("Server=localhost", result);
+        Assert.Contains("Database=testdb", result);
+        Assert.Contains("User Id=user", result);
+        Assert.Contains("Password=pass", result);
+        Assert.Contains("Connection Timeout=30", result);
+    }
+
+    [Fact]
+    public void PostgreSql_WithPortAndSsl_ReturnsCorrectConnectionString()
+    {
+        // Arrange
+        var builder = FluentConnectionStringBuilder.For("postgresql")
+            .WithHost("db.example.com", 5432)
+            .WithDatabase("mydb")
+            .WithSsl(false);
+
+        // Act
+        string result = builder.Build();
+
+        // Assert
+        Assert.Contains("Host=db.example.com", result);
+        Assert.Contains("Port=5432", result);
+        Assert.Contains("Database=mydb", result);
+        Assert.Contains("SSL Mode=Disable", result);
+    }
+
+    [Fact]
+    public void MySql_WithIntegratedSecurityAndPooling_ReturnsCorrectConnectionString()
+    {
+        // Arrange
+        var builder = FluentConnectionStringBuilder.For("mysql")
+            .WithHost("localhost", 3306)
+            .WithDatabase("testdb")
+            .WithIntegratedSecurity()
+            .WithPooling(5, 50);
+
+        // Act
+        string result = builder.Build();
+
+        // Assert
+        Assert.Contains("Server=localhost", result);
+        Assert.Contains("Port=3306", result);
+        Assert.Contains("Database=testdb", result);
+        Assert.Contains("IntegratedSecurity=true", result);
+        Assert.Contains("Pooling=true", result);
+        Assert.Contains("Minimum Pool Size=5", result);
+        Assert.Contains("Maximum Pool Size=50", result);
+    }
+
+    [Fact]
+    public void Sqlite_Basic_ReturnsCorrectConnectionString()
+    {
+        // Arrange
+        var builder = FluentConnectionStringBuilder.For("sqlite")
+            .WithDatabase("/path/to/db.sqlite");
+
+        // Act
+        string result = builder.Build();
+
+        // Assert
+        Assert.Contains("Data Source=/path/to/db.sqlite", result);
+    }
+
+    [Fact]
+    public void CustomOptions_ReturnsCorrectConnectionString()
+    {
+        // Arrange
+        var builder = FluentConnectionStringBuilder.For("sqlserver")
+            .WithHost("localhost")
+            .WithOption("Application Name", "MyApp")
+            .WithOption("MultipleActiveResultSets", "true");
+
+        // Act
+        string result = builder.Build();
+
+        // Assert
+        Assert.Contains("Server=localhost", result);
+        Assert.Contains("Application Name=MyApp", result);
+        Assert.Contains("MultipleActiveResultSets=true", result);
+    }
+
+    [Fact]
+    public void ValueEscaping_WithSpecialCharacters_ReturnsProperlyEscapedValues()
+    {
+        // Arrange
+        var builder = FluentConnectionStringBuilder.For("sqlserver")
+            .WithHost("server;name")
+            .WithDatabase("db=test")
+            .WithCredentials("user name", "pass=word");
+
+        // Act
+        string result = builder.Build();
+
+        // Assert
+        Assert.Contains("Server=\"server;name\"", result);
+        Assert.Contains("Database=\"db=test\"", result);
+        Assert.Contains("User Id=\"user name\"", result);
+        Assert.Contains("Password=\"pass=word\"", result);
+    }
+
+    [Fact]
+    public void Credentials_OverwriteIntegratedSecurity_CredentialsTakePrecedence()
+    {
+        // Arrange
+        var builder = FluentConnectionStringBuilder.For("sqlserver")
+            .WithIntegratedSecurity()
+            .WithCredentials("user", "pass");
+
+        // Act
+        string result = builder.Build();
+
+        // Assert
+        Assert.Contains("User Id=user", result);
+        Assert.Contains("Password=pass", result);
+        Assert.DoesNotContain("Integrated Security", result);
+    }
+
+    [Fact]
+    public void IntegratedSecurity_OverwriteCredentials_IntegratedSecurityTakesPrecedence()
+    {
+        // Arrange
+        var builder = FluentConnectionStringBuilder.For("sqlserver")
+            .WithCredentials("user", "pass")
+            .WithIntegratedSecurity();
+
+        // Act
+        string result = builder.Build();
+
+        // Assert
+        Assert.Contains("Integrated Security=True", result);
+        Assert.DoesNotContain("User Id", result);
+        Assert.DoesNotContain("Password", result);
+    }
+
+    [Fact]
+    public void Options_OverwriteSemantics_LastValueWins()
+    {
+        // Arrange
+        var builder = FluentConnectionStringBuilder.For("sqlserver")
+            .WithHost("localhost")
+            .WithOption("Key1", "Value1")
+            .WithOption("Key1", "Value2")
+            .WithOption("Key2", "Value3");
+
+        // Act
+        string result = builder.Build();
+
+        // Assert
+        Assert.Contains("Key1=Value2", result);
+        Assert.Contains("Key2=Value3", result);
+        Assert.Single(result.Split(new[] { "Key1=" }, StringSplitOptions.None), "Key1= should appear only once");
+    }
+
+    [Fact]
+    public void SqlServer_ProviderSpecificOrdering_CorrectParameterOrder()
+    {
+        // Arrange
+        var builder = FluentConnectionStringBuilder.For("sqlserver")
+            .WithHost("localhost")
+            .WithDatabase("testdb")
+            .WithCredentials("user", "pass")
+            .WithTimeout(60)
+            .WithPooling(10, 100);
+
+        // Act
+        string result = builder.Build();
+
+        // Assert - SQL Server ordering: Server < Database < User < Timeout < Pooling
+        int serverIndex = result.IndexOf("Server=");
+        int databaseIndex = result.IndexOf("Database=");
+        int userIndex = result.IndexOf("User Id=");
+        int timeoutIndex = result.IndexOf("Connection Timeout=");
+        int poolingIndex = result.IndexOf("Pooling=");
+
+        Assert.True(serverIndex >= 0);
+        Assert.True(databaseIndex > serverIndex);
+        Assert.True(userIndex > databaseIndex);
+        Assert.True(timeoutIndex > userIndex);
+        Assert.True(poolingIndex > timeoutIndex);
+    }
+
+    [Fact]
+    public void PostgreSql_ProviderSpecificOrdering_CorrectParameterOrder()
+    {
+        // Arrange
+        var builder = FluentConnectionStringBuilder.For("postgresql")
+            .WithHost("localhost")
+            .WithDatabase("testdb")
+            .WithCredentials("user", "pass")
+            .WithTimeout(30);
+
+        // Act
+        string result = builder.Build();
+
+        // Assert - PostgreSQL ordering: Host < Database < Username < Password < Timeout < SSL Mode
+        int hostIndex = result.IndexOf("Host=");
+        int databaseIndex = result.IndexOf("Database=");
+        int usernameIndex = result.IndexOf("Username=");
+        int passwordIndex = result.IndexOf("Password=");
+        int timeoutIndex = result.IndexOf("Timeout=");
+        int sslIndex = result.IndexOf("SSL Mode=");
+
+        Assert.True(hostIndex >= 0);
+        Assert.True(databaseIndex > hostIndex);
+        Assert.True(usernameIndex > databaseIndex);
+        Assert.True(passwordIndex > usernameIndex);
+        Assert.True(timeoutIndex > passwordIndex);
+        Assert.True(sslIndex > timeoutIndex);
+    }
+
+    [Fact]
+    public void LeadingTrailingWhitespace_TrimmedFromValues()
+    {
+        // Arrange
+        var builder = FluentConnectionStringBuilder.For("sqlserver")
+            .WithHost(" localhost ")
+            .WithDatabase(" testdb ")
+            .WithCredentials(" user ", " pass ");
+
+        // Act
+        string result = builder.Build();
+
+        // Assert
+        Assert.Contains("Server=localhost", result);
+        Assert.Contains("Database=testdb", result);
+        Assert.Contains("User Id=user", result);
+        Assert.Contains("Password=pass", result);
+        Assert.DoesNotContain(" localhost ", result);
+        Assert.DoesNotContain(" testdb ", result);
+        Assert.DoesNotContain(" user ", result);
+        Assert.DoesNotContain(" pass ", result);
+    }
+
+    [Fact]
+    public void EmptyOptionValue_ThrowsArgumentException()
+    {
+        // Arrange & Act & Assert
+        Assert.Throws<ArgumentException>(() =>
+            FluentConnectionStringBuilder.For("sqlserver")
+                .WithHost("localhost")
+                .WithOption("key", ""));
+    }
+
+    [Fact]
+    public void NullHost_ThrowsArgumentException()
+    {
+        // Arrange & Act & Assert
+        Assert.Throws<ArgumentException>(() =>
+            FluentConnectionStringBuilder.For("sqlserver").WithHost(null!));
+    }
+
+    [Fact]
+    public void InvalidPoolingConfiguration_ThrowsArgumentException()
+    {
+        // Arrange & Act & Assert
+        Assert.Throws<ArgumentException>(() =>
+            FluentConnectionStringBuilder.For("sqlserver")
+                .WithHost("localhost")
+                .WithPooling(100, 50));
+    }
+
+    [Fact]
+    public void NegativeTimeout_ThrowsArgumentException()
+    {
+        // Arrange & Act & Assert
+        Assert.Throws<ArgumentException>(() =>
+            FluentConnectionStringBuilder.For("sqlserver")
+                .WithHost("localhost")
+                .WithTimeout(-1));
+    }
+
+    [Fact]
+    public void GenericProvider_UsesLowercaseKeys()
+    {
+        // Arrange
+        var builder = FluentConnectionStringBuilder.For("customdb")
+            .WithHost("localhost", 9999)
+            .WithDatabase("mydb")
+            .WithCredentials("user", "pass");
+
+        // Act
+        string result = builder.Build();
+
+        // Assert
+        Assert.Contains("host=localhost", result);
+        Assert.Contains("port=9999", result);
+        Assert.Contains("database=mydb", result);
+        Assert.Contains("user=user", result);
+        Assert.Contains("password=pass", result);
+    }
+
+    [Fact]
+    public void Validate_MissingHostAndDatabase_ReturnsProblems()
+    {
+        // Arrange
+        var builder = FluentConnectionStringBuilder.For("sqlserver")
+            .WithDatabase("testdb");
+
+        // Act
+        var problems = builder.Validate();
+
+        // Assert
+        Assert.Equal(2, problems.Count);
+        Assert.Contains(problems, p => p.Contains("missing host"));
+        Assert.Contains(problems, p => p.Contains("missing database"));
+    }
+
+    [Fact]
+    public void Validate_ConflictingOptions_ReturnsProblem()
+    {
+        // Arrange
+        var builder = FluentConnectionStringBuilder.For("sqlserver")
+            .WithIntegratedSecurity()
+            .WithCredentials("user", "pass");
+
+        // Act
+        var problems = builder.Validate();
+
+        // Assert
+        Assert.Single(problems);
+        Assert.Contains(problems, p => p.Contains("conflicting options"));
+    }
+
+    [Fact]
+    public void EmptyProvider_ThrowsArgumentException()
+    {
+        // Arrange & Act & Assert
+        Assert.Throws<ArgumentException>(() => FluentConnectionStringBuilder.For(""));
+    }
+
+    [Fact]
+    public void Escape_QuotesAreDoubled()
+    {
+        // Arrange
+        var builder = FluentConnectionStringBuilder.For("sqlserver")
+            .WithHost("server")
+            .WithDatabase("test\"db")
+            .WithCredentials("user", "pass");
+
+        // Act
+        string result = builder.Build();
+
+        // Assert - internal quotes should be doubled
+        Assert.Contains("Database=\"test\"\"db\"", result);
+    }
+
+    [Fact]
+    public void WithHost_WithPort_AppendsPortToHost()
+    {
+        // Arrange
+        var builder = FluentConnectionStringBuilder.For("sqlserver")
+            .WithHost("localhost", 1433);
+
+        // Act
+        string result = builder.Build();
+
+        // Assert
+        Assert.Contains("Server=localhost,1433", result);
+    }
+
+    [Fact]
+    public void WithSsl_DefaultIsRequired()
+    {
+        // Arrange
+        var builder = FluentConnectionStringBuilder.For("sqlserver")
+            .WithHost("localhost")
+            .WithDatabase("testdb");
+
+        // Act
+        string result = builder.Build();
+
+        // Assert - SSL should be required by default
+        Assert.Contains("Encrypt=True", result);
+        Assert.Contains("TrustServerCertificate=False", result);
+    }
+
+    [Fact]
+    public void WithSsl_Disabled_SetsEncryptFalse()
+    {
+        // Arrange
+        var builder = FluentConnectionStringBuilder.For("sqlserver")
+            .WithHost("localhost")
+            .WithDatabase("testdb")
+            .WithSsl(false);
+
+        // Act
+        string result = builder.Build();
+
+        // Assert
+        Assert.Contains("Encrypt=False", result);
+    }
+
+    [Fact]
+    public void CaptureState_AndFromState_RoundtripPreservesConfiguration()
+    {
+        // Arrange
+        var originalBuilder = FluentConnectionStringBuilder.For("sqlserver")
+            .WithHost("localhost")
+            .WithDatabase("testdb")
+            .WithCredentials("user", "pass")
+            .WithTimeout(30)
+            .WithPooling(5, 50)
+            .WithOption("CustomOption", "CustomValue");
+
+        // Act - capture state
+        var state = originalBuilder.CaptureState();
+
+        // Reconstruct from state
+        var reconstructedBuilder = FluentConnectionStringBuilder.FromState(state);
+        string result = reconstructedBuilder.Build();
+
+        // Assert
+        Assert.Contains("Server=localhost", result);
+        Assert.Contains("Database=testdb", result);
+        Assert.Contains("User Id=user", result);
+        Assert.Contains("Password=pass", result);
+        Assert.Contains("Connection Timeout=30", result);
+        Assert.Contains("Pooling=True", result);
+        Assert.Contains("Minimum Pool Size=5", result);
+        Assert.Contains("Maximum Pool Size=50", result);
+        Assert.Contains("CustomOption=CustomValue", result);
+    }
+}

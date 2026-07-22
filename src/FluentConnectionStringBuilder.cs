@@ -112,7 +112,7 @@ namespace ConnStringDoctor
             }
 
             _user = user.Trim();
-            _password = password;
+            _password = password.Trim();
             _integratedSecurity = false;
             return this;
         }
