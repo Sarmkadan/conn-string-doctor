@@ -10,6 +10,9 @@ public static class TestRunner
         Console.WriteLine("\n=== ConnectionStringRedactor Test Suite ===\n");
         ConnectionStringRedactorTests.RunTests();
 
+        Console.WriteLine("\n=== PoolConfigCheck Test Suite ===\n");
+        PoolConfigCheckTests.RunAll();
+
         return 0;
     }
 }

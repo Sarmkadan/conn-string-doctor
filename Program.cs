@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using ConnStringDoctor;
 
 ConnectionStringRedactorTests.RunTests();
+PoolConfigCheckTests.RunAll();
 
 var rootCommand = new RootCommand("Connection String Doctor - Diagnoses connection strings for common issues and compares them");
 
