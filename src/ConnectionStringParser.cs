@@ -70,6 +70,7 @@ public static class ConnectionStringParser
         var pairs = new List<string>();
         var current = new System.Text.StringBuilder();
         bool inQuotes = false;
+        bool inSingleQuotes = false;
         bool escapeNext = false;
 
         for (int i = 0; i < connectionString.Length; i++)
@@ -89,13 +90,21 @@ public static class ConnectionStringParser
                 continue;
             }
 
-            if (c == '"')
+            if (c == '"' && !inSingleQuotes)
             {
                 inQuotes = !inQuotes;
+                current.Append(c);
                 continue;
             }
 
-            if (c == ';' && !inQuotes)
+            if (c == '\'' && !inQuotes)
+            {
+                inSingleQuotes = !inSingleQuotes;
+                current.Append(c);
+                continue;
+            }
+
+            if (c == ';' && !inQuotes && !inSingleQuotes)
             {
                 var pair = current.ToString().Trim();
                 if (!string.IsNullOrEmpty(pair))
@@ -133,14 +142,16 @@ public static class ConnectionStringParser
         string keyPart = pair[..equalsIndex].Trim();
         string valuePart = pair[(equalsIndex + 1)..].Trim();
 
-        // Handle quoted values
-        if (valuePart.StartsWith('"') && valuePart.EndsWith('"'))
+        // Handle quoted values (both single and double quotes)
+        if (valuePart.Length >= 2)
         {
-            valuePart = valuePart[1..^1];
-        }
-        else if (valuePart.StartsWith("'") && valuePart.EndsWith("'"))
-        {
-            valuePart = valuePart[1..^1];
+            char firstChar = valuePart[0];
+            char lastChar = valuePart[^1];
+
+            if ((firstChar == '"' && lastChar == '"') || (firstChar == '\'' && lastChar == '\''))
+            {
+                valuePart = valuePart[1..^1];
+            }
         }
 
         return (keyPart, valuePart);
