@@ -24,7 +24,7 @@ public enum Severity
 /// <summary>
 /// Represents the result of a diagnostic check.
 /// </summary>
-internal sealed class DiagnosticResult
+public sealed class DiagnosticResult
 {
     private readonly List<string> _warnings = new();
     private readonly List<string> _errors = new();
