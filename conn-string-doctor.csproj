@@ -19,4 +19,11 @@
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- The tests/ directory holds its own project (conn-string-doctor.tests.csproj) with its
+         own package references (xunit); it must never be compiled into or shipped with the
+         main library/CLI assembly. -->
+    <Compile Remove="tests/**/*.cs" />
+    <Compile Remove="build/**/*.cs" />
+  </ItemGroup>
 </Project>
