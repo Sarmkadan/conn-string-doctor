@@ -1,0 +1,1688 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>ConnStringDoctor</name>
+    </assembly>
+    <members>
+        <member name="T:ConnStringDoctor.ConnectionStringComparator">
+            <summary>
+            Provides comparison functionality for connection strings.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringComparator.Compare(System.String,System.String,System.Boolean,System.Boolean)">
+            <summary>
+            Compares two connection strings key-by-key and returns a detailed diff.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringComparator.ParseToDictionary(System.String)">
+            <summary>
+            Parses a connection string to a dictionary without redacting.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringComparator.FormatValue(System.String)">
+            <summary>
+            Formats a value for display, truncating long values.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringComparator.Truncate(System.String,System.Int32)">
+            <summary>
+            Truncates a string if it's too long.
+            </summary>
+        </member>
+        <member name="T:ConnStringDoctor.ConnectionStringConverter">
+            <summary>
+            Converts connection strings between provider dialects (SQL Server, PostgreSQL, MySQL, SQLite)
+            by translating well-known keywords to their target provider equivalents.
+            </summary>
+        </member>
+        <member name="T:ConnStringDoctor.ConnectionStringConverter.ConnectionStringInfo">
+            <summary>
+            Holds the parsed parts of a connection string together with its source provider name.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.ConnectionStringConverter.ConnectionStringInfo.Provider">
+            <summary>Gets or sets the source provider name (e.g. "sqlserver", "postgres").</summary>
+        </member>
+        <member name="P:ConnStringDoctor.ConnectionStringConverter.ConnectionStringInfo.OriginalParts">
+            <summary>Gets or sets the original key/value pairs of the connection string.</summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverter.Parse(System.String)">
+            <summary>
+            Parses a connection string into its key/value parts using ADO.NET quoting rules.
+            The provider is left empty; set <see cref="P:ConnStringDoctor.ConnectionStringConverter.ConnectionStringInfo.Provider"/> before converting.
+            </summary>
+            <param name="connectionString">The connection string to parse; may be null or empty.</param>
+            <returns>The parsed connection string information.</returns>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverter.TryParse(System.String,ConnStringDoctor.ConnectionStringConverter.ConnectionStringInfo@)">
+            <summary>
+            Attempts to parse a connection string into its key/value parts using ADO.NET quoting rules.
+            The provider is left empty; set <see cref="P:ConnStringDoctor.ConnectionStringConverter.ConnectionStringInfo.Provider"/> before converting.
+            </summary>
+            <param name="connectionString">The connection string to parse; may be null or empty.</param>
+            <param name="info">When this method returns, contains the parsed connection string information if parsing succeeded, or null if parsing failed.</param>
+            <returns>true if the connection string was successfully parsed; otherwise, false.</returns>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverter.Convert(ConnStringDoctor.ConnectionStringConverter.ConnectionStringInfo,System.String)">
+            <summary>
+            Converts the parsed connection string parts to the dialect of the target provider.
+            </summary>
+            <param name="source">The parsed source connection string, including its provider name.</param>
+            <param name="targetProvider">The target provider name (e.g. "postgres", "mysql", "sqlserver").</param>
+            <returns>The conversion result with the rewritten connection string, unmapped keys, and warnings.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="source"/> is null.</exception>
+            <exception cref="T:System.ArgumentException"><paramref name="targetProvider"/> is null, empty, or whitespace.</exception>
+        </member>
+        <member name="T:ConnStringDoctor.ConversionResult">
+            <summary>
+            Represents the outcome of a connection string conversion.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.ConversionResult.ConnectionString">
+            <summary>Gets the converted connection string.</summary>
+        </member>
+        <member name="P:ConnStringDoctor.ConversionResult.UnmappedKeys">
+            <summary>Gets the source keys that had no mapping for the target provider.</summary>
+        </member>
+        <member name="P:ConnStringDoctor.ConversionResult.Warnings">
+            <summary>Gets the warnings produced during conversion.</summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConversionResult.#ctor(System.String,System.Collections.Generic.IReadOnlyList{System.String},System.Collections.Generic.IReadOnlyList{System.String})">
+            <summary>
+            Initializes a new instance of the <see cref="T:ConnStringDoctor.ConversionResult"/> class.
+            </summary>
+            <param name="connectionString">The converted connection string; null is treated as empty.</param>
+            <param name="unmappedKeys">The keys that could not be mapped; null is treated as empty.</param>
+            <param name="warnings">The conversion warnings; null is treated as empty.</param>
+        </member>
+        <member name="T:ConnStringDoctor.ConnectionStringConverterExtensions">
+            <summary>
+            Provides useful extension methods for connection string conversion types.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverterExtensions.TryConvert(ConnStringDoctor.ConnectionStringConverter,ConnStringDoctor.ConnectionStringConverter.ConnectionStringInfo,System.String,ConnStringDoctor.ConversionResult@)">
+            <summary>
+            Attempts to convert the connection string to the target provider, returning a boolean indicating success.
+            </summary>
+            <param name="converter">The converter instance.</param>
+            <param name="source">The parsed source connection string information.</param>
+            <param name="targetProvider">The target provider name (e.g. "postgres", "mysql", "sqlserver").</param>
+            <param name="result">When successful, receives the conversion result; otherwise null.</param>
+            <returns>True if conversion succeeded; false if source or target provider is invalid.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="converter"/> or <paramref name="source"/> is null.</exception>
+            <exception cref="T:System.ArgumentException"><paramref name="targetProvider"/> is null or whitespace.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverterExtensions.GetValue(ConnStringDoctor.ConnectionStringConverter.ConnectionStringInfo,System.String)">
+            <summary>
+            Gets the connection string value for a specific key from the connection string info, or null if the key doesn't exist.
+            </summary>
+            <param name="info">The connection string information.</param>
+            <param name="key">The key to look up (case-insensitive).</param>
+            <returns>The value if found; otherwise null.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="info"/> is null.</exception>
+            <exception cref="T:System.ArgumentException"><paramref name="key"/> is null or empty.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverterExtensions.HasWarnings(ConnStringDoctor.ConversionResult)">
+            <summary>
+            Determines whether the conversion result contains any warnings.
+            </summary>
+            <param name="result">The conversion result to check.</param>
+            <returns>True if there are warnings; otherwise false.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="result"/> is null.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverterExtensions.HasUnmappedKeys(ConnStringDoctor.ConversionResult)">
+            <summary>
+            Determines whether the conversion result has unmapped keys.
+            </summary>
+            <param name="result">The conversion result to check.</param>
+            <returns>True if there are unmapped keys; otherwise false.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="result"/> is null.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverterExtensions.FirstWarning(ConnStringDoctor.ConversionResult)">
+            <summary>
+            Gets the first warning message, or null if there are no warnings.
+            </summary>
+            <param name="result">The conversion result to query.</param>
+            <returns>The first warning message if available; otherwise null.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="result"/> is null.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverterExtensions.FirstUnmappedKey(ConnStringDoctor.ConversionResult)">
+            <summary>
+            Gets the first unmapped key, or null if there are no unmapped keys.
+            </summary>
+            <param name="result">The conversion result to query.</param>
+            <returns>The first unmapped key if available; otherwise null.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="result"/> is null.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverterExtensions.ParseAndConvert(ConnStringDoctor.ConnectionStringConverter,System.String,System.String)">
+            <summary>
+            Parses a connection string and immediately converts it to the target provider.
+            </summary>
+            <param name="converter">The converter instance.</param>
+            <param name="connectionString">The connection string to parse and convert.</param>
+            <param name="targetProvider">The target provider name.</param>
+            <returns>The conversion result.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="converter"/> is null.</exception>
+            <exception cref="T:System.ArgumentException"><paramref name="connectionString"/> is null or whitespace.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverterExtensions.GetDatabaseName(ConnStringDoctor.ConnectionStringConverter.ConnectionStringInfo)">
+            <summary>
+            Gets the database name from the connection string parts.
+            </summary>
+            <param name="info">The connection string information.</param>
+            <returns>The database name if found; otherwise null.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="info"/> is null.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverterExtensions.GetServerName(ConnStringDoctor.ConnectionStringConverter.ConnectionStringInfo)">
+            <summary>
+            Gets the server/host name from the connection string parts.
+            </summary>
+            <param name="info">The connection string information.</param>
+            <returns>The server/host name if found; otherwise null.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="info"/> is null.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverterExtensions.GetPort(ConnStringDoctor.ConnectionStringConverter.ConnectionStringInfo)">
+            <summary>
+            Gets the port number from the connection string, or null if not specified.
+            </summary>
+            <param name="info">The connection string information.</param>
+            <returns>The port number as an integer if found and valid; otherwise null.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="info"/> is null.</exception>
+        </member>
+        <member name="T:ConnStringDoctor.ConnectionStringConverterJsonExtensions">
+            <summary>
+            Provides JSON serialization and deserialization extensions for <see cref="T:ConnStringDoctor.ConnectionStringConverter"/>.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverterJsonExtensions.ToJson(ConnStringDoctor.ConnectionStringConverter,System.Boolean)">
+            <summary>
+            Serializes a <see cref="T:ConnStringDoctor.ConnectionStringConverter"/> instance to a JSON string.
+            </summary>
+            <param name="value">The converter instance to serialize.</param>
+            <param name="indented">Whether to format the JSON with indentation for readability.</param>
+            <returns>A JSON string representation of the converter.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="value"/> is <see langword="null"/>.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverterJsonExtensions.FromJson(System.String)">
+            <summary>
+            Deserializes a JSON string to a <see cref="T:ConnStringDoctor.ConnectionStringConverter"/> instance.
+            </summary>
+            <param name="json">The JSON string to deserialize.</param>
+            <returns>The deserialized converter instance, or <see langword="null"/> if deserialization fails.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="json"/> is <see langword="null"/>.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverterJsonExtensions.TryFromJson(System.String,ConnStringDoctor.ConnectionStringConverter@)">
+            <summary>
+            Attempts to deserialize a JSON string to a <see cref="T:ConnStringDoctor.ConnectionStringConverter"/> instance.
+            </summary>
+            <param name="json">The JSON string to deserialize.</param>
+            <param name="value">Receives the deserialized converter instance if successful; otherwise, <see langword="null"/>.</param>
+            <returns><see langword="true"/> if deserialization succeeds; otherwise, <see langword="false"/>.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="json"/> is <see langword="null"/>.</exception>
+        </member>
+        <member name="T:ConnStringDoctor.ConnectionStringConverterValidation">
+            <summary>
+            Provides validation helpers for <see cref="T:ConnStringDoctor.ConnectionStringConverter.ConnectionStringInfo"/> and <see cref="T:ConnStringDoctor.ConversionResult"/>.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverterValidation.Validate(ConnStringDoctor.ConnectionStringConverter.ConnectionStringInfo)">
+            <summary>
+            Validates the <see cref="T:ConnStringDoctor.ConnectionStringConverter.ConnectionStringInfo"/> instance.
+            </summary>
+            <param name="value">The instance to validate.</param>
+            <returns>A list of human-readable problems.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="value"/> is null.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverterValidation.IsValid(ConnStringDoctor.ConnectionStringConverter.ConnectionStringInfo)">
+            <summary>
+            Determines whether the <see cref="T:ConnStringDoctor.ConnectionStringConverter.ConnectionStringInfo"/> instance is valid.
+            </summary>
+            <param name="value">The instance to check.</param>
+            <returns>True if the instance is valid; otherwise false.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="value"/> is null.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverterValidation.EnsureValid(ConnStringDoctor.ConnectionStringConverter.ConnectionStringInfo)">
+            <summary>
+            Ensures the <see cref="T:ConnStringDoctor.ConnectionStringConverter.ConnectionStringInfo"/> instance is valid.
+            </summary>
+            <param name="value">The instance to ensure validity for.</param>
+            <exception cref="T:System.ArgumentNullException"><paramref name="value"/> is null.</exception>
+            <exception cref="T:System.ArgumentException">Thrown when the instance is invalid.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverterValidation.Validate(ConnStringDoctor.ConversionResult)">
+            <summary>
+            Validates the <see cref="T:ConnStringDoctor.ConversionResult"/> instance.
+            </summary>
+            <param name="value">The instance to validate.</param>
+            <returns>A list of human-readable problems.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="value"/> is null.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverterValidation.IsValid(ConnStringDoctor.ConversionResult)">
+            <summary>
+            Determines whether the <see cref="T:ConnStringDoctor.ConversionResult"/> instance is valid.
+            </summary>
+            <param name="value">The instance to check.</param>
+            <returns>True if the instance is valid; otherwise false.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="value"/> is null.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringConverterValidation.EnsureValid(ConnStringDoctor.ConversionResult)">
+            <summary>
+            Ensures the <see cref="T:ConnStringDoctor.ConversionResult"/> instance is valid.
+            </summary>
+            <param name="value">The instance to ensure validity for.</param>
+            <exception cref="T:System.ArgumentNullException"><paramref name="value"/> is null.</exception>
+            <exception cref="T:System.ArgumentException">Thrown when the instance is invalid.</exception>
+        </member>
+        <member name="T:ConnStringDoctor.ConnectionStringInfo">
+            <summary>
+            Represents information parsed from a connection string.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.ConnectionStringInfo.Provider">
+            <summary>
+            Gets or sets the database provider type.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.ConnectionStringInfo.Server">
+            <summary>
+            Gets or sets the server/host name.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.ConnectionStringInfo.Port">
+            <summary>
+            Gets or sets the port number.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.ConnectionStringInfo.Database">
+            <summary>
+            Gets or sets the database name.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.ConnectionStringInfo.User">
+            <summary>
+            Gets or sets the user name.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.ConnectionStringInfo.Password">
+            <summary>
+            Gets or sets the password.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.ConnectionStringInfo.Properties">
+            <summary>
+            Gets the collection of additional connection string properties.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringInfo.ToString">
+            <summary>
+            Returns a string representation of the parsed connection string.
+            </summary>
+        </member>
+        <member name="T:ConnStringDoctor.ConnectionStringInfoExtensions">
+            <summary>
+            Provides extension methods for <see cref="T:ConnStringDoctor.ConnectionStringInfo"/> to simplify common connection string operations.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringInfoExtensions.GetServerEndpoint(ConnStringDoctor.ConnectionStringInfo)">
+            <summary>
+            Gets the normalized server endpoint in the format "server:port" or just "server" if port is not specified.
+            </summary>
+            <param name="info">The connection string information.</param>
+            <returns>The normalized server endpoint string.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="info"/> is <see langword="null"/>.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringInfoExtensions.IsLocalDatabase(ConnStringDoctor.ConnectionStringInfo)">
+            <summary>
+            Gets a value indicating whether this connection represents a local database (SQLite or local SQL Server).
+            </summary>
+            <param name="info">The connection string information.</param>
+            <returns>True if the database is local; otherwise, false.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="info"/> is <see langword="null"/>.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringInfoExtensions.ToSanitizedString(ConnStringDoctor.ConnectionStringInfo)">
+            <summary>
+            Gets the connection string with sensitive information (password) removed.
+            </summary>
+            <param name="info">The connection string information.</param>
+            <returns>A sanitized connection string without password.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="info"/> is <see langword="null"/>.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringInfoExtensions.RequiresAuthentication(ConnStringDoctor.ConnectionStringInfo)">
+            <summary>
+            Gets a value indicating whether this connection requires authentication (has user and password).
+            </summary>
+            <param name="info">The connection string information.</param>
+            <returns>True if authentication is required; otherwise, false.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="info"/> is <see langword="null"/>.</exception>
+        </member>
+        <member name="T:ConnStringDoctor.ConnectionStringInfoExtensionsJsonExtensions">
+            <summary>
+            Provides System.Text.Json serialization extension methods for <see cref="T:ConnStringDoctor.ConnectionStringInfo"/>.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringInfoExtensionsJsonExtensions.ToJson(ConnStringDoctor.ConnectionStringInfo,System.Boolean)">
+            <summary>
+            Serializes the <see cref="T:ConnStringDoctor.ConnectionStringInfo"/> instance to a JSON string.
+            </summary>
+            <param name="value">The connection string information to serialize.</param>
+            <param name="indented">Whether to format the JSON with indentation for readability.</param>
+            <returns>A JSON string representation of the connection string information.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringInfoExtensionsJsonExtensions.FromJson(System.String)">
+            <summary>
+            Deserializes a JSON string to a <see cref="T:ConnStringDoctor.ConnectionStringInfo"/> instance.
+            </summary>
+            <param name="json">The JSON string to deserialize.</param>
+            <returns>A deserialized <see cref="T:ConnStringDoctor.ConnectionStringInfo"/> instance, or <see langword="null"/> if the JSON is empty or whitespace.</returns>
+            <exception cref="T:System.Text.Json.JsonException">Thrown when the JSON is invalid or cannot be deserialized.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringInfoExtensionsJsonExtensions.TryFromJson(System.String,ConnStringDoctor.ConnectionStringInfo@)">
+            <summary>
+            Attempts to deserialize a JSON string to a <see cref="T:ConnStringDoctor.ConnectionStringInfo"/> instance.
+            </summary>
+            <param name="json">The JSON string to deserialize.</param>
+            <param name="value">Receives the deserialized instance if successful; otherwise, <see langword="null"/>.</param>
+            <returns><see langword="true"/> if deserialization succeeds; otherwise, <see langword="false"/>.</returns>
+        </member>
+        <member name="T:ConnStringDoctor.ConnectionStringInfoJsonExtensions">
+            <summary>
+            Provides System.Text.Json serialization extensions for <see cref="T:ConnStringDoctor.ConnectionStringInfo"/>.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringInfoJsonExtensions.ToJson(ConnStringDoctor.ConnectionStringInfo,System.Boolean)">
+            <summary>
+            Converts a <see cref="T:ConnStringDoctor.ConnectionStringInfo"/> instance to its JSON representation.
+            </summary>
+            <param name="value">The connection string information to serialize.</param>
+            <param name="indented">Whether to format the JSON with indentation for readability.</param>
+            <returns>A JSON string representation of the connection string information.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="value"/> is null.</exception>
+            <exception cref="T:System.Text.Json.JsonException">Thrown when serialization fails.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringInfoJsonExtensions.FromJson(System.String)">
+            <summary>
+            Parses a <see cref="T:ConnStringDoctor.ConnectionStringInfo"/> instance from a JSON string.
+            </summary>
+            <param name="json">The JSON string to deserialize.</param>
+            <returns>The deserialized connection string information, or null if the JSON is null or empty.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="json"/> is null.</exception>
+            <exception cref="T:System.Text.Json.JsonException">Thrown when the JSON is invalid or cannot be deserialized.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringInfoJsonExtensions.TryFromJson(System.String,ConnStringDoctor.ConnectionStringInfo@)">
+            <summary>
+            Attempts to parse a <see cref="T:ConnStringDoctor.ConnectionStringInfo"/> instance from a JSON string.
+            </summary>
+            <param name="json">The JSON string to deserialize.</param>
+            <param name="value">Receives the deserialized connection string information if successful.</param>
+            <returns>True if deserialization succeeded; otherwise, false.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="json"/> is null.</exception>
+        </member>
+        <member name="T:ConnStringDoctor.ConnectionStringInfoValidation">
+            <summary>
+            Provides validation methods for <see cref="T:ConnStringDoctor.ConnectionStringInfo"/> instances.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringInfoValidation.Validate(ConnStringDoctor.ConnectionStringInfo)">
+            <summary>
+            Validates the provided <see cref="T:ConnStringDoctor.ConnectionStringInfo"/> instance.
+            </summary>
+            <param name="value">The <see cref="T:ConnStringDoctor.ConnectionStringInfo"/> instance to validate.</param>
+            <returns>A list of human-readable problems with the instance.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown if <paramref name="value"/> is <see langword="null"/>.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringInfoValidation.IsValid(ConnStringDoctor.ConnectionStringInfo)">
+            <summary>
+            Checks if the provided <see cref="T:ConnStringDoctor.ConnectionStringInfo"/> instance is valid.
+            </summary>
+            <param name="value">The <see cref="T:ConnStringDoctor.ConnectionStringInfo"/> instance to check.</param>
+            <returns><see langword="true"/> if the instance is valid; otherwise, <see langword="false"/>.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown if <paramref name="value"/> is <see langword="null"/>.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringInfoValidation.EnsureValid(ConnStringDoctor.ConnectionStringInfo)">
+            <summary>
+            Ensures the provided <see cref="T:ConnStringDoctor.ConnectionStringInfo"/> instance is valid.
+            </summary>
+            <param name="value">The <see cref="T:ConnStringDoctor.ConnectionStringInfo"/> instance to ensure.</param>
+            <exception cref="T:System.ArgumentNullException">Thrown if <paramref name="value"/> is <see langword="null"/>.</exception>
+            <exception cref="T:System.ArgumentException">Thrown if the instance is invalid.</exception>
+        </member>
+        <member name="T:ConnStringDoctor.ConnectionStringNormalizer">
+            <summary>
+            Provides functionality to normalize connection strings by:
+            - Converting keys to canonical forms via alias mapping
+            - Sorting keys alphabetically
+            - Applying consistent spacing
+            - Optionally redacting sensitive information
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringNormalizer.Normalize(System.String,System.Boolean)">
+            <summary>
+            Normalizes a connection string with canonical key names, sorted keys, and consistent spacing.
+            </summary>
+            <param name="connectionString">The connection string to normalize</param>
+            <param name="redact">Whether to redact sensitive information</param>
+            <returns>The normalized connection string</returns>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringNormalizer.GetCanonicalKey(System.String)">
+            <summary>
+            Gets the canonical key name for a given key (handles aliases).
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringNormalizer.CapitalizeKeywords(System.String)">
+            <summary>
+            Capitalizes keywords in a connection string key (e.g., "user id" -> "User ID").
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringNormalizer.IsSensitiveKey(System.String)">
+            <summary>
+            Checks if a key is sensitive and should be redacted.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringNormalizer.BuildConnectionString(System.Collections.Generic.Dictionary{System.String,System.String})">
+            <summary>
+            Builds a properly formatted connection string from key-value pairs.
+            </summary>
+        </member>
+        <member name="T:ConnStringDoctor.ConnectionStringParser">
+            <summary>
+            Static parser for connection strings that extracts provider information and key-value pairs.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringParser.Parse(System.String)">
+            <summary>
+            Parses a connection string and returns structured information.
+            </summary>
+            <param name="connectionString">The connection string to parse (e.g., "Server=localhost;Database=test;User Id=admin")</param>
+            <returns>Structured connection string information</returns>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringParser.SplitConnectionString(System.String)">
+            <summary>
+            Splits a connection string into key=value pairs, handling quoted values and escaped semicolons.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringParser.ParseKeyValuePair(System.String)">
+            <summary>
+            Parses a single key=value pair, handling quoted values.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringParser.ProcessKeyValue(ConnStringDoctor.ConnectionStringInfo,System.String,System.String)">
+            <summary>
+            Processes a key-value pair and adds it to the result.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringParser.NormalizeKey(System.String)">
+            <summary>
+            Normalizes key names to standard forms.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringParser.ExtractHostAndPort(System.String,System.Nullable{System.Int32}@)">
+            <summary>
+            Extracts host and port from a value in format "host,port", "host:port", or "[ipv6]:port".
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringParser.DetermineProvider(ConnStringDoctor.ConnectionStringInfo)">
+            <summary>
+            Determines the database provider based on available information.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringParser.DefaultPort(ConnStringDoctor.DbProvider)">
+            <summary>
+            Gets the default port for a given database provider.
+            </summary>
+        </member>
+        <member name="T:ConnStringDoctor.RedactionMode">
+            <summary>
+            Specifies the redaction mode for sensitive values in connection strings.
+            </summary>
+        </member>
+        <member name="F:ConnStringDoctor.RedactionMode.Full">
+            <summary>
+            Completely masks the value with the specified mask string.
+            </summary>
+        </member>
+        <member name="F:ConnStringDoctor.RedactionMode.Partial">
+            <summary>
+            Partially masks the value, keeping the first 2 and last 2 characters visible.
+            For example: "password123" becomes "pa****rd"
+            </summary>
+        </member>
+        <member name="T:ConnStringDoctor.ConnectionStringRedactor">
+            <summary>
+            Provides utilities for redacting sensitive information from database connection strings.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringRedactor.IsSecretKey(System.String)">
+            <summary>
+            Determines whether the specified key is considered a secret key.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringRedactor.IsPasswordKey(System.String)">
+            <summary>
+            Determines whether the specified key is a password key.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringRedactor.Redact(System.String,ConnStringDoctor.RedactionMode,System.String)">
+            <summary>
+            Redacts all secret values in the supplied connection string.
+            </summary>
+            <param name="connectionString">The original connection string.</param>
+            <param name="mode">The redaction mode to use.</param>
+            <param name="mask">The mask to use when mode is Full.</param>
+            <returns>The redacted connection string.</returns>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringRedactor.RedactToDictionary(System.String,ConnStringDoctor.RedactionMode,System.String)">
+            <summary>
+            Redacts all secret values in the supplied connection string and returns them as a dictionary.
+            </summary>
+            <param name="connectionString">The original connection string.</param>
+            <param name="mode">The redaction mode to use.</param>
+            <param name="mask">The mask to use when mode is Full.</param>
+            <returns>A dictionary of keyword->value with sensitive values redacted.</returns>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringRedactor.RedactKeepUser(System.String)">
+            <summary>
+            Redacts only the password value in the supplied connection string.
+            </summary>
+            <param name="connectionString">The original connection string.</param>
+            <returns>The connection string with the password redacted.</returns>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringRedactor.ContainsSecrets(System.String)">
+            <summary>
+            Checks whether the supplied connection string contains any secret keys.
+            </summary>
+            <param name="connectionString">The connection string to inspect.</param>
+            <returns>True if any secret key is present; otherwise, false.</returns>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringRedactor.RedactValue(System.String,ConnStringDoctor.RedactionMode,System.String)">
+            <summary>
+            Redacts a single value according to the specified mode.
+            </summary>
+            <param name="value">The value to redact.</param>
+            <param name="mode">The redaction mode to use.</param>
+            <param name="mask">The mask to use when mode is Full.</param>
+            <returns>The redacted value.</returns>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringRedactor.ApplyPartialRedaction(System.String,System.String)">
+            <summary>
+            Applies partial redaction to a value, keeping first 2 and last 2 characters visible.
+            </summary>
+            <param name="value">The value to redact.</param>
+            <param name="mask">The mask string to use between the visible characters.</param>
+            <returns>The partially redacted value.</returns>
+        </member>
+        <member name="T:ConnStringDoctor.ConnectionStringRedactorJsonExtensions">
+            <summary>
+            Provides System.Text.Json serialization extensions for <see cref="T:ConnStringDoctor.ConnectionStringRedactor"/>.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringRedactorJsonExtensions.RedactToJson(System.String,System.String,System.Boolean)">
+            <summary>
+            Redacts secrets in a connection string and returns the redacted result as JSON.
+            </summary>
+            <param name="connectionString">The original connection string to redact.</param>
+            <param name="mask">The mask to replace secret values with. Defaults to "***".</param>
+            <param name="indented">Whether to format the JSON with indentation for readability.</param>
+            <returns>A JSON object containing the redacted connection string.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="connectionString"/> is null.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringRedactorJsonExtensions.RedactKeepUserToJson(System.String,System.Boolean)">
+            <summary>
+            Redacts only the password in a connection string and returns the redacted result as JSON.
+            </summary>
+            <param name="connectionString">The original connection string to redact.</param>
+            <param name="indented">Whether to format the JSON with indentation for readability.</param>
+            <returns>A JSON object containing the original and password-redacted connection strings.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="connectionString"/> is null.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringRedactorJsonExtensions.ContainsSecretsToJson(System.String,System.Boolean)">
+            <summary>
+            Checks if a connection string contains secrets and returns the result as JSON.
+            </summary>
+            <param name="connectionString">The connection string to check for secrets.</param>
+            <param name="indented">Whether to format the JSON with indentation for readability.</param>
+            <returns>A JSON object containing the original connection string and a boolean indicating if secrets were found.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="connectionString"/> is null.</exception>
+        </member>
+        <member name="T:ConnStringDoctor.ConnectionStringRedactorTests">
+            <summary>
+            Tests for ConnectionStringRedactor.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringRedactorTests.RunTests">
+            <summary>
+            Runs all tests for ConnectionStringRedactor.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringRedactorTests.TestFullRedaction">
+            <summary>
+            Tests the Full redaction mode (default behavior).
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringRedactorTests.TestPartialRedaction">
+            <summary>
+            Tests the Partial redaction mode.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringRedactorTests.TestRedactToDictionaryWithPartialMode">
+            <summary>
+            Tests RedactToDictionary with Partial mode.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringRedactorTests.TestRedactKeepUser">
+            <summary>
+            Tests RedactKeepUser method.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ConnectionStringRedactorTests.TestContainsSecrets">
+            <summary>
+            Tests ContainsSecrets method.
+            </summary>
+        </member>
+        <member name="T:ConnStringDoctor.DbProvider">
+            <summary>
+            Database provider types.
+            </summary>
+        </member>
+        <member name="F:ConnStringDoctor.DbProvider.Unknown">
+            <summary>
+            Unknown provider type.
+            </summary>
+        </member>
+        <member name="F:ConnStringDoctor.DbProvider.SqlServer">
+            <summary>
+            Microsoft SQL Server.
+            </summary>
+        </member>
+        <member name="F:ConnStringDoctor.DbProvider.PostgreSql">
+            <summary>
+            PostgreSQL.
+            </summary>
+        </member>
+        <member name="F:ConnStringDoctor.DbProvider.MySql">
+            <summary>
+            MySQL.
+            </summary>
+        </member>
+        <member name="F:ConnStringDoctor.DbProvider.Sqlite">
+            <summary>
+            SQLite.
+            </summary>
+        </member>
+        <member name="T:ConnStringDoctor.DeprecatedKeywordCheck">
+            <summary>
+            Diagnostic check that detects deprecated/obsolete keywords in connection strings.
+            Reports deprecated keywords with suggested replacements based on the database provider.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.DeprecatedKeywordCheck.Name">
+            <inheritdoc />
+        </member>
+        <member name="P:ConnStringDoctor.DeprecatedKeywordCheck.Description">
+            <inheritdoc />
+        </member>
+        <member name="F:ConnStringDoctor.DeprecatedKeywordCheck.DeprecatedKeywords">
+            <summary>
+            Known deprecated keywords for different database providers.
+            </summary>
+        </member>
+        <member name="F:ConnStringDoctor.DeprecatedKeywordCheck.Replacements">
+            <summary>
+            Suggested replacements for deprecated keywords.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.DeprecatedKeywordCheck.RunAsync(ConnStringDoctor.ConnectionStringInfo,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:ConnStringDoctor.DeprecatedKeywordCheck.GetReplacementMessage(System.String,ConnStringDoctor.DbProvider)">
+            <summary>
+            Gets the replacement message for a deprecated keyword with the given provider.
+            </summary>
+        </member>
+        <member name="T:ConnStringDoctor.Severity">
+            <summary>
+            Represents the severity level of a diagnostic result.
+            </summary>
+        </member>
+        <member name="F:ConnStringDoctor.Severity.Info">
+            <summary>
+            Informational message - no action required.
+            </summary>
+        </member>
+        <member name="F:ConnStringDoctor.Severity.Warning">
+            <summary>
+            Warning - potential issue that should be addressed.
+            </summary>
+        </member>
+        <member name="F:ConnStringDoctor.Severity.Error">
+            <summary>
+            Error - critical issue that must be fixed.
+            </summary>
+        </member>
+        <member name="T:ConnStringDoctor.DiagnosticResult">
+            <summary>
+            Represents the result of a diagnostic check.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.DiagnosticResult.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:ConnStringDoctor.DiagnosticResult"/> class.
+            </summary>
+            <param name="checkName">Name of the diagnostic check.</param>
+        </member>
+        <member name="P:ConnStringDoctor.DiagnosticResult.Name">
+            <summary>
+            Gets the name of the diagnostic check.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.DiagnosticResult.Message">
+            <summary>
+            Gets the message from the diagnostic check.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.DiagnosticResult.Details">
+            <summary>
+            Gets the detailed information from the diagnostic check.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.DiagnosticResult.Warnings">
+            <summary>
+            Gets the list of warnings.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.DiagnosticResult.Errors">
+            <summary>
+            Gets the list of errors.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.DiagnosticResult.ResultSeverity">
+            <summary>
+            Gets the severity level of the diagnostic result.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.DiagnosticResult.IsSuccess">
+            <summary>
+            Gets whether the diagnostic check passed without errors or warnings.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.DiagnosticResult.SetMessage(System.String)">
+            <summary>
+            Sets the message for the diagnostic result.
+            </summary>
+            <param name="message">The message to set.</param>
+        </member>
+        <member name="M:ConnStringDoctor.DiagnosticResult.SetDetails(System.String)">
+            <summary>
+            Sets the details for the diagnostic result.
+            </summary>
+            <param name="details">The details to set.</param>
+        </member>
+        <member name="M:ConnStringDoctor.DiagnosticResult.AddError(System.String)">
+            <summary>
+            Adds an error to the diagnostic result.
+            </summary>
+            <param name="error">The error message.</param>
+        </member>
+        <member name="M:ConnStringDoctor.DiagnosticResult.AddWarning(System.String)">
+            <summary>
+            Adds a warning to the diagnostic result.
+            </summary>
+            <param name="warning">The warning message.</param>
+        </member>
+        <member name="M:ConnStringDoctor.DiagnosticResult.SetSeverity(ConnStringDoctor.Severity)">
+            <summary>
+            Sets the severity level explicitly.
+            </summary>
+            <param name="severity">The severity level to set.</param>
+        </member>
+        <member name="M:ConnStringDoctor.DiagnosticResult.UpdateSeverity">
+            <summary>
+            Updates the severity based on current errors and warnings.
+            </summary>
+        </member>
+        <member name="T:ConnStringDoctor.DiagnosticResultHtmlRenderer">
+            <summary>
+            Provides functionality to render DiagnosticResult objects in HTML format.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.DiagnosticResultHtmlRenderer.Render(System.Collections.Generic.IEnumerable{ConnStringDoctor.DiagnosticResult},System.Boolean)">
+            <summary>
+            Renders a collection of DiagnosticResult objects to HTML format.
+            </summary>
+            <param name="results">The diagnostic results to render.</param>
+            <param name="includeSuccess">Whether to include successful checks in the output.</param>
+            <returns>HTML formatted string.</returns>
+        </member>
+        <member name="M:ConnStringDoctor.DiagnosticResultHtmlRenderer.RenderDiagnosticResult(System.Text.StringBuilder,ConnStringDoctor.DiagnosticResult,System.Boolean)">
+            <summary>
+            Renders a single DiagnosticResult to the StringBuilder in HTML format.
+            </summary>
+            <param name="builder">The StringBuilder to append to.</param>
+            <param name="result">The diagnostic result to render.</param>
+            <param name="isFailure">Whether this is a failed check.</param>
+        </member>
+        <member name="M:ConnStringDoctor.DiagnosticResultHtmlRenderer.EscapeHtml(System.String)">
+            <summary>
+            Escapes HTML special characters in text.
+            </summary>
+            <param name="text">The text to escape.</param>
+            <returns>Escaped text safe for HTML.</returns>
+        </member>
+        <member name="M:ConnStringDoctor.DiagnosticResultHtmlRenderer.FormatHtmlText(System.String)">
+            <summary>
+            Formats text for HTML output, converting newlines to <br/> tags.
+            </summary>
+            <param name="text">The text to format.</param>
+            <returns>Formatted HTML text.</returns>
+        </member>
+        <member name="M:ConnStringDoctor.DiagnosticResultHtmlRenderer.RenderToFile(System.Collections.Generic.IEnumerable{ConnStringDoctor.DiagnosticResult},System.String,System.Boolean)">
+            <summary>
+            Renders diagnostic results to a file in HTML format.
+            </summary>
+            <param name="results">The diagnostic results to render.</param>
+            <param name="filePath">Path to the output file.</param>
+            <param name="includeSuccess">Whether to include successful checks in the output.</param>
+        </member>
+        <member name="T:ConnStringDoctor.DiagnosticResultMarkdownRenderer">
+            <summary>
+            Provides functionality to render DiagnosticResult objects in Markdown format.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.DiagnosticResultMarkdownRenderer.Render(System.Collections.Generic.IEnumerable{ConnStringDoctor.DiagnosticResult},System.Boolean)">
+            <summary>
+            Renders a collection of DiagnosticResult objects to Markdown format.
+            </summary>
+            <param name="results">The diagnostic results to render.</param>
+            <param name="includeSuccess">Whether to include successful checks in the output.</param>
+            <returns>Markdown formatted string.</returns>
+        </member>
+        <member name="M:ConnStringDoctor.DiagnosticResultMarkdownRenderer.RenderDiagnosticResult(System.Text.StringBuilder,ConnStringDoctor.DiagnosticResult,System.Boolean)">
+            <summary>
+            Renders a single DiagnosticResult to the StringBuilder in Markdown format.
+            </summary>
+            <param name="builder">The StringBuilder to append to.</param>
+            <param name="result">The diagnostic result to render.</param>
+            <param name="isFailure">Whether this is a failed check.</param>
+        </member>
+        <member name="M:ConnStringDoctor.DiagnosticResultMarkdownRenderer.EscapeMarkdown(System.String)">
+            <summary>
+            Escapes special Markdown characters in text.
+            </summary>
+            <param name="text">The text to escape.</param>
+            <returns>Escaped text safe for Markdown.</returns>
+        </member>
+        <member name="M:ConnStringDoctor.DiagnosticResultMarkdownRenderer.RenderToFile(System.Collections.Generic.IEnumerable{ConnStringDoctor.DiagnosticResult},System.String,System.Boolean)">
+            <summary>
+            Renders diagnostic results to a file in Markdown format.
+            </summary>
+            <param name="results">The diagnostic results to render.</param>
+            <param name="filePath">Path to the output file.</param>
+            <param name="includeSuccess">Whether to include successful checks in the output.</param>
+        </member>
+        <member name="T:ConnStringDoctor.DnsAndTcpCheck">
+            <summary>
+            Diagnostic check that verifies DNS resolution and TCP reachability of the host.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.DnsAndTcpCheck.#ctor(System.Nullable{System.TimeSpan})">
+            <summary>
+            Initializes a new instance of the <see cref="T:ConnStringDoctor.DnsAndTcpCheck"/> class.
+            </summary>
+            <param name="connectTimeout">TCP connection timeout. If not specified, defaults to 5 seconds.</param>
+        </member>
+        <member name="P:ConnStringDoctor.DnsAndTcpCheck.Name">
+            <inheritdoc />
+        </member>
+        <member name="P:ConnStringDoctor.DnsAndTcpCheck.Description">
+            <inheritdoc />
+        </member>
+        <member name="M:ConnStringDoctor.DnsAndTcpCheck.RunAsync(ConnStringDoctor.ConnectionStringInfo,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:ConnStringDoctor.DuplicateKeyCheck">
+            <summary>
+            Diagnostic check that detects duplicate keys (case-insensitive) in connection string properties.
+            Reports which value wins when the same key appears multiple times.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.DuplicateKeyCheck.Name">
+            <inheritdoc />
+        </member>
+        <member name="P:ConnStringDoctor.DuplicateKeyCheck.Description">
+            <inheritdoc />
+        </member>
+        <member name="M:ConnStringDoctor.DuplicateKeyCheck.RunAsync(ConnStringDoctor.ConnectionStringInfo,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="M:ConnStringDoctor.DuplicateKeyCheck.FindDuplicateKeys(System.Collections.Generic.IReadOnlyDictionary{System.String,System.String})">
+            <summary>
+            Finds duplicate keys in a case-insensitive dictionary.
+            Returns a dictionary mapping each duplicate key to all its values (in order of appearance).
+            </summary>
+        </member>
+        <member name="T:ConnStringDoctor.FluentConnectionStringBuilder">
+            <summary>
+            Provides a fluent interface for constructing provider-specific connection strings.
+            This class enables building connection strings for various database connection strings using method chaining,
+            with proper escaping and provider-specific formatting.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilder.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/> class for the specified provider.
+            </summary>
+            <param name="provider">The provider name; unrecognized providers produce a generic key=value string.</param>
+            <exception cref="T:System.ArgumentException"><paramref name="provider"/> is null, empty, or whitespace.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilder.For(System.String)">
+            <summary>
+            Creates a builder for the specified provider (e.g. "sqlserver", "postgresql", "mysql", "sqlite").
+            </summary>
+            <param name="provider">The provider name; unrecognized providers produce a generic key=value string.</param>
+            <returns>A new builder instance.</returns>
+            <exception cref="T:System.ArgumentException"><paramref name="provider"/> is null, empty, or whitespace.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilder.WithHost(System.String,System.Nullable{System.Int32})">
+            <summary>
+            Configures the host name and optional port for the database server.
+            </summary>
+            <param name="host">The server host name or IP address to connect to.</param>
+            <param name="port">The optional TCP port number; if null, uses the provider's default port.</param>
+            <returns>The same builder instance, enabling method chaining.</returns>
+            <exception cref="T:System.ArgumentException"><paramref name="host"/> is null, empty, or consists only of whitespace.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilder.WithDatabase(System.String)">
+            <summary>
+            Specifies the database name or file path for the connection.
+            For SQL Server, PostgreSQL, and MySQL this is the database name.
+            For SQLite this is the path to the SQLite database file.
+            </summary>
+            <param name="db">The database name or file path.</param>
+            <returns>The same builder instance, enabling method chaining.</returns>
+            <exception cref="T:System.ArgumentException"><paramref name="db"/> is null, empty, or consists only of whitespace.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilder.WithCredentials(System.String,System.String)">
+            <summary>
+            Configures username and password authentication, automatically disabling integrated security.
+            </summary>
+            <param name="user">The user name for database authentication.</param>
+            <param name="password">The password for the specified user.</param>
+            <returns>The same builder instance, enabling method chaining.</returns>
+            <exception cref="T:System.ArgumentException"><paramref name="user"/> or <paramref name="password"/> is null, empty, or consists only of whitespace.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilder.WithIntegratedSecurity">
+            <summary>
+            Configures the connection to use Windows integrated security (also known as trusted connection).
+            This clears any previously configured username and password credentials.
+            </summary>
+            <returns>The same builder instance, enabling method chaining.</returns>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilder.WithSsl(System.Boolean)">
+            <summary>
+            Configures whether SSL/TLS encryption is required for the connection.
+            Defaults to requiring encryption for security.
+            </summary>
+            <param name="required">True to require SSL/TLS encryption; false to allow unencrypted connections.</param>
+            <returns>The same builder instance, enabling method chaining.</returns>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilder.WithPooling(System.Int32,System.Int32)">
+            <summary>
+            Configures the connection pool minimum and maximum size limits.
+            </summary>
+            <param name="min">The minimum number of connections to maintain in the pool; must be non-negative.</param>
+            <param name="max">The maximum number of connections allowed in the pool; must not be less than <paramref name="min"/>.</param>
+            <returns>The same builder instance, enabling method chaining.</returns>
+            <exception cref="T:System.ArgumentException"><paramref name="min"/> is negative or <paramref name="max"/> is less than <paramref name="min"/>.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilder.WithTimeout(System.Int32)">
+            <summary>
+            Configures the connection timeout duration in seconds.
+            </summary>
+            <param name="seconds">The connection timeout in seconds; must be a positive integer.</param>
+            <returns>The same builder instance, enabling method chaining.</returns>
+            <exception cref="T:System.ArgumentException"><paramref name="seconds"/> is zero or negative.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilder.WithOption(System.String,System.String)">
+            <summary>
+            Adds or updates a custom connection string parameter that will be appended to the final connection string.
+            </summary>
+            <param name="key">The parameter name/key to add or update.</param>
+            <param name="value">The parameter value to set.</param>
+            <returns>The same builder instance, enabling method chaining.</returns>
+            <exception cref="T:System.ArgumentException"><paramref name="key"/> or <paramref name="value"/> is null, empty, or consists only of whitespace.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilder.Validate">
+            <summary>
+            Validates the current builder state and returns a list of human-readable problems.
+            Checks for missing host/server, missing database, and conflicting options.
+            </summary>
+            <returns>A list of validation problems; empty if validation passes.</returns>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilder.Build">
+            <summary>
+            Constructs the final connection string using the syntax appropriate for the configured database provider.
+            </summary>
+            <returns>The complete connection string ready for use with the specified provider.</returns>
+            <exception cref="T:System.InvalidOperationException">Thrown when building a SQLite connection string without a configured database path.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilder.Escape(System.String)">
+            <summary>
+            Escapes a connection string value according to ADO.NET rules.
+            Values containing separators (;, =), quotes (", '), or leading/trailing whitespace are wrapped in double quotes.
+            Internal quotes are doubled to escape them.
+            </summary>
+            <param name="value">The value to escape; if null or empty, returns an empty string.</param>
+            <returns>The escaped value ready for inclusion in a connection string.</returns>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilder.CaptureState">
+            <summary>
+            Creates a serializable snapshot of the current builder configuration.
+            This allows the connection string configuration to be saved and later restored.
+            </summary>
+            <returns>A new <see cref="T:ConnStringDoctor.FluentConnectionStringBuilderState"/> instance containing the current configuration.</returns>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilder.FromState(ConnStringDoctor.FluentConnectionStringBuilderState)">
+            <summary>
+            Reconstructs a <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/> instance from a previously captured configuration snapshot.
+            </summary>
+            <param name="state">The configuration snapshot to restore from.</param>
+            <returns>A new builder instance configured with the values from the snapshot.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="state"/> is null.</exception>
+            <exception cref="T:System.ArgumentException">The snapshot does not contain a valid provider name.</exception>
+        </member>
+        <member name="T:ConnStringDoctor.FluentConnectionStringBuilderState">
+            <summary>
+            Represents a serializable snapshot of a <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/> configuration.
+            This allows connection string configurations to be saved and restored across application sessions.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.FluentConnectionStringBuilderState.Provider">
+            <summary>
+            Gets or sets the database provider name (e.g., "sqlserver", "postgresql", "mysql", "sqlite").
+            This determines the connection string syntax used when building the final connection string.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.FluentConnectionStringBuilderState.Host">
+            <summary>
+            Gets or sets the server host name or IP address to connect to.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.FluentConnectionStringBuilderState.Port">
+            <summary>
+            Gets or sets the TCP port number to connect to on the database server.
+            If null, the provider's default port will be used.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.FluentConnectionStringBuilderState.Database">
+            <summary>
+            Gets or sets the database name or file path for the connection.
+            For SQL Server, PostgreSQL, and MySQL this is the database name.
+            For SQLite this is the path to the SQLite database file.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.FluentConnectionStringBuilderState.User">
+            <summary>
+            Gets or sets the user name for database authentication.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.FluentConnectionStringBuilderState.Password">
+            <summary>
+            Gets or sets the password for the specified user.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.FluentConnectionStringBuilderState.IntegratedSecurity">
+            <summary>
+            Gets or sets whether integrated security (Windows authentication) is enabled.
+            When true, username and password credentials are ignored.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.FluentConnectionStringBuilderState.SslRequired">
+            <summary>
+            Gets or sets whether SSL/TLS encryption is required for the connection.
+            Defaults to true for secure connections.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.FluentConnectionStringBuilderState.PoolingMin">
+            <summary>
+            Gets or sets the minimum number of connections to maintain in the connection pool.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.FluentConnectionStringBuilderState.PoolingMax">
+            <summary>
+            Gets or sets the maximum number of connections allowed in the connection pool.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.FluentConnectionStringBuilderState.Timeout">
+            <summary>
+            Gets or sets the connection timeout in seconds.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.FluentConnectionStringBuilderState.Options">
+            <summary>
+            Gets or sets additional connection string parameters as key-value pairs.
+            These parameters are appended verbatim to the connection string.
+            </summary>
+        </member>
+        <member name="T:ConnStringDoctor.FluentConnectionStringBuilderExtensions">
+            <summary>
+            Provides convenience extension methods for <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/>.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilderExtensions.WithOptions(ConnStringDoctor.FluentConnectionStringBuilder,System.Collections.Generic.Dictionary{System.String,System.String})">
+            <summary>
+            Adds multiple options to the connection string builder in a single call.
+            </summary>
+            <param name="builder">The connection string builder.</param>
+            <param name="options">Dictionary of key-value pairs to add.</param>
+            <returns>The same builder instance for fluent chaining.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="builder"/> is <see langword="null"/>.</exception>
+            <exception cref="T:System.ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilderExtensions.WithTimeout(ConnStringDoctor.FluentConnectionStringBuilder,System.TimeSpan)">
+            <summary>
+            Sets the connection timeout to a specific time span.
+            </summary>
+            <param name="builder">The connection string builder.</param>
+            <param name="timeout">The timeout value.</param>
+            <returns>The same builder instance for fluent chaining.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="builder"/> is <see langword="null"/>.</exception>
+            <exception cref="T:System.ArgumentOutOfRangeException"><paramref name="timeout"/> is not positive or exceeds maximum allowed value.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilderExtensions.WithPoolSize(ConnStringDoctor.FluentConnectionStringBuilder,System.Int32)">
+            <summary>
+            Sets the pooling configuration with a single timeout value for both min and max pool size.
+            </summary>
+            <param name="builder">The connection string builder.</param>
+            <param name="poolSize">The pool size (min and max will be set to this value).</param>
+            <returns>The same builder instance for fluent chaining.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="builder"/> is <see langword="null"/>.</exception>
+            <exception cref="T:System.ArgumentOutOfRangeException"><paramref name="poolSize"/> is not positive.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilderExtensions.WithDatabaseFromUri(ConnStringDoctor.FluentConnectionStringBuilder,System.String)">
+            <summary>
+            Sets the database name from a connection string URI format (e.g., "Server=localhost;Database=mydb").
+            </summary>
+            <param name="builder">The connection string builder.</param>
+            <param name="databaseName">The database name to extract from the URI or use directly.</param>
+            <returns>The same builder instance for fluent chaining.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="builder"/> is <see langword="null"/>.</exception>
+            <exception cref="T:System.ArgumentException"><paramref name="databaseName"/> is <see langword="null"/>, empty, or consists only of whitespace.</exception>
+        </member>
+        <member name="T:ConnStringDoctor.FluentConnectionStringBuilderExtensionsJsonExtensions">
+            <summary>
+            Provides JSON serialization helpers for <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/>.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilderExtensionsJsonExtensions.ToJson(ConnStringDoctor.FluentConnectionStringBuilder,System.Boolean)">
+            <summary>
+            Serializes the specified <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/> to a JSON string.
+            </summary>
+            <param name="value">The builder instance to serialize.</param>
+            <param name="indented">If <c>true</c>, the output JSON will be formatted with indentation.</param>
+            <returns>A JSON representation of the builder.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="value"/> is <c>null</c>.</exception>
+            <exception cref="T:System.Text.Json.JsonException">Thrown when serialization fails due to invalid state in the builder.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilderExtensionsJsonExtensions.FromJson(System.String)">
+            <summary>
+            Deserializes a JSON string into a new <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/> instance.
+            </summary>
+            <param name="json">The JSON string to deserialize.</param>
+            <returns>A new <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/> populated from the JSON, or <c>null</c> if the JSON does not represent a valid object.</returns>
+            <exception cref="T:System.ArgumentException">Thrown when <paramref name="json"/> is <c>null</c>, empty, or consists only of whitespace.</exception>
+            <exception cref="T:System.Text.Json.JsonException">Thrown when the JSON is malformed or cannot be deserialized into a <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/>.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilderExtensionsJsonExtensions.TryFromJson(System.String,ConnStringDoctor.FluentConnectionStringBuilder@)">
+            <summary>
+            Attempts to deserialize a JSON string into a <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/> instance.
+            </summary>
+            <param name="json">The JSON string to deserialize.</param>
+            <param name="value">When this method returns, contains the deserialized <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/> if the operation succeeded; otherwise, <c>null</c>.</param>
+            <returns><c>true</c> if deserialization succeeded; otherwise, <c>false</c>.</returns>
+            <exception cref="T:System.ArgumentException">Thrown when <paramref name="json"/> is <c>null</c>, empty, or consists only of whitespace.</exception>
+        </member>
+        <member name="T:ConnStringDoctor.FluentConnectionStringBuilderJsonExtensions">
+            <summary>
+            Provides JSON serialization and deserialization extensions for <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/>.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilderJsonExtensions.ToJson(ConnStringDoctor.FluentConnectionStringBuilder,System.Boolean)">
+            <summary>
+            Serializes the configuration of a <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/> instance to a JSON string.
+            </summary>
+            <param name="value">The connection string builder to serialize.</param>
+            <param name="indented">Whether to format the JSON with indentation for readability.</param>
+            <returns>A JSON representation of the connection string builder configuration.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="value"/> is <see langword="null"/>.</exception>
+            <remarks>This method uses the <see cref="T:System.Text.Json.JsonSerializer"/> to serialize the builder's state.</remarks>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilderJsonExtensions.FromJson(System.String)">
+            <summary>
+            Deserializes a JSON string produced by <see cref="M:ConnStringDoctor.FluentConnectionStringBuilderJsonExtensions.ToJson(ConnStringDoctor.FluentConnectionStringBuilder,System.Boolean)"/> back into a
+            <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/> instance.
+            </summary>
+            <param name="json">The JSON string to deserialize.</param>
+            <returns>
+            A <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/> instance if the JSON is valid and contains a provider;
+            otherwise, <see langword="null"/>.
+            </returns>
+            <remarks>This method uses the <see cref="T:System.Text.Json.JsonSerializer"/> to deserialize the JSON into a builder state.</remarks>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilderJsonExtensions.TryFromJson(System.String,ConnStringDoctor.FluentConnectionStringBuilder@)">
+            <summary>
+            Attempts to deserialize a JSON string produced by <see cref="M:ConnStringDoctor.FluentConnectionStringBuilderJsonExtensions.ToJson(ConnStringDoctor.FluentConnectionStringBuilder,System.Boolean)"/> into a
+            <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/> instance.
+            </summary>
+            <param name="json">The JSON string to deserialize.</param>
+            <param name="value">Receives the deserialized builder if successful; otherwise, <see langword="null"/>.</param>
+            <returns><see langword="true"/> if deserialization succeeds; otherwise, <see langword="false"/>.</returns>
+            <remarks>This method calls <see cref="M:ConnStringDoctor.FluentConnectionStringBuilderJsonExtensions.FromJson(System.String)"/> and returns its result.</remarks>
+        </member>
+        <member name="T:ConnStringDoctor.FluentConnectionStringBuilderJsonExtensionsJsonExtensions">
+            <summary>
+            Provides JSON serialization and deserialization extensions for <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/>.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilderJsonExtensionsJsonExtensions.ToJson(ConnStringDoctor.FluentConnectionStringBuilder,System.Boolean)">
+            <summary>
+            Serializes the configuration of a <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/> instance to a JSON string.
+            </summary>
+            <param name="value">The connection string builder to serialize.</param>
+            <param name="indented">Whether to format the JSON with indentation for readability.</param>
+            <returns>A JSON representation of the connection string builder configuration.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="value"/> is <see langword="null"/>.</exception>
+            <remarks>This method uses the <see cref="T:System.Text.Json.JsonSerializer"/> to serialize the builder's state.</remarks>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilderJsonExtensionsJsonExtensions.FromJson(System.String)">
+            <summary>
+            Deserializes a JSON string produced by <see cref="M:ConnStringDoctor.FluentConnectionStringBuilderJsonExtensionsJsonExtensions.ToJson(ConnStringDoctor.FluentConnectionStringBuilder,System.Boolean)"/> back into a
+            <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/> instance.
+            </summary>
+            <param name="json">The JSON string to deserialize.</param>
+            <returns>
+            A <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/> instance if the JSON is valid and contains a provider;
+            otherwise, <see langword="null"/>.
+            </returns>
+            <remarks>This method uses the <see cref="T:System.Text.Json.JsonSerializer"/> to deserialize the JSON into a builder state.</remarks>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilderJsonExtensionsJsonExtensions.TryFromJson(System.String,ConnStringDoctor.FluentConnectionStringBuilder@)">
+            <summary>
+            Attempts to deserialize a JSON string produced by <see cref="M:ConnStringDoctor.FluentConnectionStringBuilderJsonExtensionsJsonExtensions.ToJson(ConnStringDoctor.FluentConnectionStringBuilder,System.Boolean)"/> into a
+            <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/> instance.
+            </summary>
+            <param name="json">The JSON string to deserialize.</param>
+            <param name="value">Receives the deserialized builder if successful; otherwise, <see langword="null"/>.</param>
+            <returns><see langword="true"/> if deserialization succeeds; otherwise, <see langword="false"/>.</returns>
+            <remarks>This method calls <see cref="M:ConnStringDoctor.FluentConnectionStringBuilderJsonExtensionsJsonExtensions.FromJson(System.String)"/> and returns its result.</remarks>
+        </member>
+        <member name="T:ConnStringDoctor.FluentConnectionStringBuilderTests">
+            <summary>
+            Tests for FluentConnectionStringBuilder fluent interface and connection string building.
+            </summary>
+        </member>
+        <member name="T:ConnStringDoctor.FluentConnectionStringBuilderValidation">
+            <summary>
+            Provides validation helpers for the <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/> type.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilderValidation.Validate(ConnStringDoctor.FluentConnectionStringBuilder)">
+            <summary>
+            Validates the specified <paramref name="value"/> and returns a list of human-readable problems.
+            </summary>
+            <param name="value">The <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/> instance to validate.</param>
+            <returns>A list of human-readable problems, or an empty list if the instance is valid.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown if <paramref name="value"/> is null.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilderValidation.IsValid(ConnStringDoctor.FluentConnectionStringBuilder)">
+            <summary>
+            Determines whether the specified <paramref name="value"/> is valid.
+            </summary>
+            <param name="value">The <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/> instance to validate.</param>
+            <returns>true if the instance is valid; otherwise, false.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown if <paramref name="value"/> is null.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.FluentConnectionStringBuilderValidation.EnsureValid(ConnStringDoctor.FluentConnectionStringBuilder)">
+            <summary>
+            Ensures that the specified <paramref name="value"/> is valid, throwing an exception if it is not.
+            </summary>
+            <param name="value">The <see cref="T:ConnStringDoctor.FluentConnectionStringBuilder"/> instance to validate.</param>
+            <exception cref="T:System.ArgumentException">Thrown if <paramref name="value"/> is not valid.</exception>
+            <exception cref="T:System.ArgumentNullException">Thrown if <paramref name="value"/> is null.</exception>
+        </member>
+        <member name="P:ConnStringDoctor.IDiagnosticCheck.Name">
+            <summary>
+            Gets the name of the diagnostic check.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.IDiagnosticCheck.Description">
+            <summary>
+            Gets the description of the diagnostic check.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.IDiagnosticCheck.RunAsync(ConnStringDoctor.ConnectionStringInfo,System.Threading.CancellationToken)">
+            <summary>
+            Runs the diagnostic check asynchronously.
+            </summary>
+            <param name="info">Parsed connection string information.</param>
+            <param name="ct">Cancellation token.</param>
+            <returns>A task that resolves to a <see cref="T:ConnStringDoctor.DiagnosticResult"/>.</returns>
+        </member>
+        <member name="T:ConnStringDoctor.PoolConfigCheck">
+            <summary>
+            Diagnostic check that validates pooling related settings in a connection string.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.PoolConfigCheck.Name">
+            <inheritdoc />
+        </member>
+        <member name="P:ConnStringDoctor.PoolConfigCheck.Description">
+            <inheritdoc />
+        </member>
+        <member name="M:ConnStringDoctor.PoolConfigCheck.RunAsync(ConnStringDoctor.ConnectionStringInfo,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:ConnStringDoctor.PoolConfigCheckTests">
+            <summary>
+            Tests for PoolConfigCheck diagnostic check.
+            </summary>
+        </member>
+        <member name="T:ConnStringDoctor.ProviderDetector">
+            <summary>
+            Detects the database provider from connection string keywords and patterns.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ProviderDetector.#cctor">
+            <summary>
+            Static constructor to initialize keyword mappings.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ProviderDetector.DetectProvider(System.String)">
+            <summary>
+            Infers the database provider from a connection string with a confidence score.
+            </summary>
+            <param name="connectionString">The connection string to analyze</param>
+            <returns>A tuple containing the detected provider and confidence score (0-100)</returns>
+        </member>
+        <member name="M:ConnStringDoctor.ProviderDetector.SplitConnectionString(System.String)">
+            <summary>
+            Splits a connection string into key=value pairs.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ProviderDetector.ParseKeyValuePair(System.String)">
+            <summary>
+            Parses a single key=value pair.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ProviderDetector.ProcessKey(ConnStringDoctor.ProviderDetector.ConnectionStringInfo,System.String,System.String)">
+            <summary>
+            Processes a key-value pair to extract provider information.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ProviderDetector.NormalizeKey(System.String)">
+            <summary>
+            Normalizes key names to standard forms.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ProviderDetector.FinalizeDetection(ConnStringDoctor.ProviderDetector.ConnectionStringInfo)">
+            <summary>
+            Finalizes provider detection based on all collected information.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ProviderDetector.DefaultPort(ConnStringDoctor.DbProvider)">
+            <summary>
+            Gets the default port for a given database provider.
+            </summary>
+        </member>
+        <member name="T:ConnStringDoctor.ProviderDetector.ConnectionStringInfo">
+            <summary>
+            Private helper class to hold parsed connection string information.
+            </summary>
+        </member>
+        <member name="T:ConnStringDoctor.ProviderDetectorTests">
+            <summary>
+            Simple tests to verify ProviderDetector functionality.
+            </summary>
+        </member>
+        <member name="T:ConnStringDoctor.ReachabilityProbe">
+            <summary>
+            Provides functionality to probe the reachability of a database server with timeout, retry, and cancellation support.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.ReachabilityProbe.ConnectionStringInfo">
+            <summary>
+            Gets the connection string information being probed.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.ReachabilityProbe.ConnectTimeout">
+            <summary>
+            Gets the TCP connection timeout for each attempt.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.ReachabilityProbe.MaxAttempts">
+            <summary>
+            Gets the maximum number of retry attempts.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ReachabilityProbe.#ctor(ConnStringDoctor.ConnectionStringInfo,System.Nullable{System.TimeSpan},System.Int32)">
+            <summary>
+            Initializes a new instance of the <see cref="T:ConnStringDoctor.ReachabilityProbe"/> class.
+            </summary>
+            <param name="connectionStringInfo">The connection string information to probe.</param>
+            <param name="connectTimeout">The TCP connection timeout for each attempt. If not specified, defaults to 5 seconds.</param>
+            <param name="maxAttempts">The maximum number of retry attempts. If not specified, defaults to 3.</param>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="connectionStringInfo"/> is null.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ReachabilityProbe.ProbeAsync(System.Threading.CancellationToken)">
+            <summary>
+            Probes the reachability of the server with the specified cancellation token.
+            </summary>
+            <param name="ct">The cancellation token to monitor for cancellation requests.</param>
+            <returns>A task that represents the probe operation and contains the result.</returns>
+            <exception cref="T:System.ArgumentNullException">Thrown when <paramref name="ct"/> is null.</exception>
+            <exception cref="T:System.ObjectDisposedException">Thrown when the probe has been disposed.</exception>
+        </member>
+        <member name="M:ConnStringDoctor.ReachabilityProbe.Dispose">
+            <summary>
+            Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.
+            </summary>
+        </member>
+        <member name="T:ConnStringDoctor.ReachabilityProbeResult">
+            <summary>
+            Represents the result of a reachability probe operation.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.ReachabilityProbeResult.Status">
+            <summary>
+            Gets the status of the reachability probe.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.ReachabilityProbeResult.TotalElapsedTime">
+            <summary>
+            Gets the elapsed time for the entire probe operation.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.ReachabilityProbeResult.AttemptElapsedTimes">
+            <summary>
+            Gets the elapsed time for each individual attempt.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.ReachabilityProbeResult.Exception">
+            <summary>
+            Gets the exception that occurred, if any.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.ReachabilityProbeResult.Details">
+            <summary>
+            Gets additional details about the probe result.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ReachabilityProbeResult.#ctor(ConnStringDoctor.ProbeStatus,System.TimeSpan,System.Collections.Generic.IReadOnlyList{System.TimeSpan},System.Exception,System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:ConnStringDoctor.ReachabilityProbeResult"/> class.
+            </summary>
+            <param name="status">The probe status.</param>
+            <param name="totalElapsedTime">The total elapsed time.</param>
+            <param name="attemptElapsedTimes">The elapsed time for each attempt.</param>
+            <param name="exception">The exception that occurred, if any.</param>
+            <param name="details">Additional details.</param>
+        </member>
+        <member name="P:ConnStringDoctor.ReachabilityProbeResult.IsSuccess">
+            <summary>
+            Gets whether the probe was successful.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.ReachabilityProbeResult.IsFailure">
+            <summary>
+            Gets whether the probe failed.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.ReachabilityProbeResult.Equals(ConnStringDoctor.ReachabilityProbeResult)">
+            <summary>
+            Determines whether the current object is equal to another object of the same type.
+            </summary>
+            <param name="other">The object to compare with the current object.</param>
+            <returns>true if the objects are equal; otherwise, false.</returns>
+        </member>
+        <member name="M:ConnStringDoctor.ReachabilityProbeResult.Equals(System.Object)">
+            <summary>
+            Determines whether the current object is equal to another object.
+            </summary>
+            <param name="obj">The object to compare with the current object.</param>
+            <returns>true if the objects are equal; otherwise, false.</returns>
+        </member>
+        <member name="M:ConnStringDoctor.ReachabilityProbeResult.GetHashCode">
+            <summary>
+            Returns the hash code for this instance.
+            </summary>
+            <returns>A hash code for the current object.</returns>
+        </member>
+        <member name="M:ConnStringDoctor.ReachabilityProbeResult.ToString">
+            <summary>
+            Returns a string representation of the probe result.
+            </summary>
+            <returns>A string representation.</returns>
+        </member>
+        <member name="T:ConnStringDoctor.ProbeStatus">
+            <summary>
+            Represents the status of a reachability probe.
+            </summary>
+        </member>
+        <member name="F:ConnStringDoctor.ProbeStatus.Reachable">
+            <summary>
+            The host is reachable and the connection was successful.
+            </summary>
+        </member>
+        <member name="F:ConnStringDoctor.ProbeStatus.Timeout">
+            <summary>
+            The connection attempt timed out.
+            </summary>
+        </member>
+        <member name="F:ConnStringDoctor.ProbeStatus.DnsFailure">
+            <summary>
+            DNS resolution failed.
+            </summary>
+        </member>
+        <member name="F:ConnStringDoctor.ProbeStatus.ConnectionRefused">
+            <summary>
+            The connection was refused by the remote host.
+            </summary>
+        </member>
+        <member name="F:ConnStringDoctor.ProbeStatus.OtherFailure">
+            <summary>
+            Another type of failure occurred.
+            </summary>
+        </member>
+        <member name="T:ConnStringDoctor.TimeoutConfigCheck">
+            <summary>
+            Diagnostic check that validates timeout related settings in a connection string.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.TimeoutConfigCheck.Name">
+            <inheritdoc />
+        </member>
+        <member name="P:ConnStringDoctor.TimeoutConfigCheck.Description">
+            <inheritdoc />
+        </member>
+        <member name="M:ConnStringDoctor.TimeoutConfigCheck.RunAsync(ConnStringDoctor.ConnectionStringInfo,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:ConnStringDoctor.TimeoutSanityCheck">
+            <summary>
+            Diagnostic check that validates timeout values in a connection string.
+            Flags Connect Timeout/Command Timeout values that are 0 (infinite), negative, or over 300s.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.TimeoutSanityCheck.Name">
+            <inheritdoc />
+        </member>
+        <member name="P:ConnStringDoctor.TimeoutSanityCheck.Description">
+            <inheritdoc />
+        </member>
+        <member name="M:ConnStringDoctor.TimeoutSanityCheck.RunAsync(ConnStringDoctor.ConnectionStringInfo,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:ConnStringDoctor.TlsInspector">
+            <summary>
+            Diagnostic check that inspects TLS handshake and certificate validation for database connections.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.TlsInspector.#ctor(System.Nullable{System.TimeSpan},System.Nullable{System.TimeSpan})">
+            <summary>
+            Initializes a new instance of the <see cref="T:ConnStringDoctor.TlsInspector"/> class.
+            </summary>
+            <param name="connectTimeout">TCP connection timeout. If not specified, defaults to 5 seconds.</param>
+            <param name="handshakeTimeout">TLS handshake timeout. If not specified, defaults to 10 seconds.</param>
+        </member>
+        <member name="P:ConnStringDoctor.TlsInspector.Name">
+            <inheritdoc />
+        </member>
+        <member name="P:ConnStringDoctor.TlsInspector.Description">
+            <inheritdoc />
+        </member>
+        <member name="M:ConnStringDoctor.TlsInspector.RunAsync(ConnStringDoctor.ConnectionStringInfo,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:ConnStringDoctor.UnknownKeywordCheck">
+            <summary>
+            Diagnostic check that detects unknown keywords in connection strings and suggests
+            the closest known keyword using Levenshtein distance.
+            </summary>
+        </member>
+        <member name="P:ConnStringDoctor.UnknownKeywordCheck.Name">
+            <inheritdoc />
+        </member>
+        <member name="P:ConnStringDoctor.UnknownKeywordCheck.Description">
+            <inheritdoc />
+        </member>
+        <member name="F:ConnStringDoctor.UnknownKeywordCheck.KnownKeywords">
+            <summary>
+            All known keywords organized by database provider.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.UnknownKeywordCheck.RunAsync(ConnStringDoctor.ConnectionStringInfo,System.Threading.CancellationToken)">
+            <inheritdoc />
+        </member>
+        <member name="T:ConnStringDoctor.UnknownKeywordCheck.Levenshtein">
+            <summary>
+            Levenshtein distance calculator for string similarity.
+            </summary>
+        </member>
+        <member name="M:ConnStringDoctor.UnknownKeywordCheck.Levenshtein.Distance(System.String,System.String)">
+            <summary>
+            Calculates the Levenshtein distance between two strings.
+            </summary>
+            <param name="a">First string</param>
+            <param name="b">Second string</param>
+            <returns>The Levenshtein distance (number of edits needed to transform a to b)</returns>
+        </member>
+        <member name="M:ConnStringDoctor.UnknownKeywordCheck.Levenshtein.FindClosestMatch(System.String,System.Collections.Generic.IEnumerable{System.String},System.Int32)">
+            <summary>
+            Finds the closest match for a given keyword among a collection of keywords.
+            </summary>
+            <param name="keyword">The keyword to find a match for</param>
+            <param name="candidates">Collection of candidate keywords</param>
+            <param name="maxDistance">Maximum acceptable distance (default: 3)</param>
+            <returns>Tuple of (closestKeyword, distance) or (null, -1) if no good match found</returns>
+        </member>
+    </members>
+</doc>

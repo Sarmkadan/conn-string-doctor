@@ -96,7 +96,8 @@ diagnoseCommand.SetHandler(async (context) =>
             new PoolConfigCheck(),
             new TimeoutConfigCheck(),
             new TimeoutSanityCheck(),
-            new DnsAndTcpCheck()
+            new DnsAndTcpCheck(),
+            new TlsInspector()
         };
 
         var results = new List<DiagnosticResult>();
@@ -253,7 +254,8 @@ listChecksCommand.SetHandler((context) =>
             new PoolConfigCheck(),
             new TimeoutConfigCheck(),
             new TimeoutSanityCheck(),
-            new DnsAndTcpCheck()
+            new DnsAndTcpCheck(),
+            new TlsInspector()
         };
 
         // Sort by name for consistent output
