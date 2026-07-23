@@ -13,6 +13,9 @@ public static class TestRunner
         Console.WriteLine("\n=== PoolConfigCheck Test Suite ===\n");
         PoolConfigCheckTests.RunAll();
 
-        return 0;
+        Console.WriteLine("\n=== Generated Type Naming Test Suite ===\n");
+        var namingClean = GeneratedTypeNamingTests.RunAll();
+
+        return namingClean ? 0 : 1;
     }
 }

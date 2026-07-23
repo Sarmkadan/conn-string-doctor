@@ -5,6 +5,7 @@ using ConnStringDoctor;
 
 ConnectionStringRedactorTests.RunTests();
 PoolConfigCheckTests.RunAll();
+GeneratedTypeNamingTests.RunAll();
 
 var rootCommand = new RootCommand("Connection String Doctor - Diagnoses connection strings for common issues and compares them");
 
