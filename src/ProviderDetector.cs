@@ -295,18 +295,12 @@ public static class ProviderDetector
 
     /// <summary>
     /// Gets the default port for a given database provider.
+    /// Thin facade over <see cref="ProviderRegistry.DefaultPort"/>, the single source of truth
+    /// for per-provider default ports.
     /// </summary>
-    public static int DefaultPort(DbProvider provider)
-    {
-        return provider switch
-        {
-            DbProvider.SqlServer => 1433,
-            DbProvider.PostgreSql => 5432,
-            DbProvider.MySql => 3306,
-            DbProvider.Sqlite => 0,
-            _ => 0
-        };
-    }
+    /// <param name="provider">The database provider.</param>
+    /// <returns>The default port, or 0 for an unknown or file-based provider.</returns>
+    public static int DefaultPort(DbProvider provider) => ProviderRegistry.DefaultPort(provider);
 
     /// <summary>
     /// Private helper class to hold parsed connection string information.
