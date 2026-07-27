@@ -33,7 +33,7 @@ namespace ConnStringDoctor
             ArgumentNullException.ThrowIfNull(connectionString);
 
             var redacted = ConnectionStringRedactor.Redact(connectionString, RedactionMode.Full, mask);
-            var result = new { Original = connectionString, Redacted = redacted };
+            var result = new { Redacted = redacted };
 
             return JsonSerializer.Serialize(result, indented ? _jsonOptionsIndented : _jsonOptions);
         }
@@ -43,14 +43,14 @@ namespace ConnStringDoctor
         /// </summary>
         /// <param name="connectionString">The original connection string to redact.</param>
         /// <param name="indented">Whether to format the JSON with indentation for readability.</param>
-        /// <returns>A JSON object containing the original and password-redacted connection strings.</returns>
+        /// <returns>A JSON object containing the password-redacted connection string.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="connectionString"/> is null.</exception>
         public static string RedactKeepUserToJson(this string connectionString, bool indented = false)
         {
             ArgumentNullException.ThrowIfNull(connectionString);
 
             var redacted = ConnectionStringRedactor.RedactKeepUser(connectionString);
-            var result = new { Original = connectionString, Redacted = redacted };
+            var result = new { Redacted = redacted };
 
             return JsonSerializer.Serialize(result, indented ? _jsonOptionsIndented : _jsonOptions);
         }
@@ -60,14 +60,15 @@ namespace ConnStringDoctor
         /// </summary>
         /// <param name="connectionString">The connection string to check for secrets.</param>
         /// <param name="indented">Whether to format the JSON with indentation for readability.</param>
-        /// <returns>A JSON object containing the original connection string and a boolean indicating if secrets were found.</returns>
+        /// <returns>A JSON object containing the redacted connection string and a boolean indicating if secrets were found.</returns>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="connectionString"/> is null.</exception>
         public static string ContainsSecretsToJson(this string connectionString, bool indented = false)
         {
             ArgumentNullException.ThrowIfNull(connectionString);
 
             var hasSecrets = ConnectionStringRedactor.ContainsSecrets(connectionString);
-            var result = new { ConnectionString = connectionString, HasSecrets = hasSecrets };
+            var redacted = ConnectionStringRedactor.Redact(connectionString);
+            var result = new { ConnectionString = redacted, HasSecrets = hasSecrets };
 
             return JsonSerializer.Serialize(result, indented ? _jsonOptionsIndented : _jsonOptions);
         }
