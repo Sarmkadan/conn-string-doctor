@@ -32,6 +32,7 @@ namespace ConnStringDoctor
         {
             "Password",
             "Pwd",
+            "Passwd",
             "User Id",
             "UserID",
             "User",
