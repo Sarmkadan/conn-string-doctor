@@ -23,12 +23,27 @@ namespace ConnStringDoctor
     }
 
     /// <summary>
-    /// Provides utilities for redacting sensitive information from database connection strings.
+    /// Options that control how redaction is performed.
     /// </summary>
-    public static class ConnectionStringRedactor
+    public sealed class RedactionOptions
     {
-        // Keys that are considered to hold secrets. The check is case-insensitive.
-        private static readonly string[] SecretKeyPatterns =
+        /// <summary>
+        /// The mask string used when <see cref="RedactionMode.Full"/> is selected.
+        /// Defaults to "****".
+        /// </summary>
+        public string Mask { get; set; } = "****";
+
+        /// <summary>
+        /// When true, the redacted value will keep the original length (by padding the mask).
+        /// This flag is currently not used by the existing logic but is provided for future extensions.
+        /// </summary>
+        public bool KeepLength { get; set; } = false;
+
+        /// <summary>
+        /// Collection of key patterns that are considered sensitive.
+        /// The default list mirrors the previous hard‑coded list.
+        /// </summary>
+        public IReadOnlyCollection<string> SensitiveKeyPatterns { get; set; } = new List<string>
         {
             "Password",
             "Pwd",
@@ -40,24 +55,15 @@ namespace ConnStringDoctor
             "AccessToken",
             "Secret"
         };
+    }
 
-        /// <summary>
-        /// Determines whether the specified key is considered a secret key.
-        /// </summary>
-        private static bool IsSecretKey(string key)
-        {
-            return SecretKeyPatterns.Any(pattern =>
-                key.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0);
-        }
-
-        /// <summary>
-        /// Determines whether the specified key is a password key.
-        /// </summary>
-        private static bool IsPasswordKey(string key)
-        {
-            return key.IndexOf("Password", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                   key.IndexOf("Pwd", StringComparison.OrdinalIgnoreCase) >= 0;
-        }
+    /// <summary>
+    /// Provides utilities for redacting sensitive information from database connection strings.
+    /// </summary>
+    public static class ConnectionStringRedactor
+    {
+        // Default options – used by the original overloads to preserve backward compatibility.
+        private static readonly RedactionOptions DefaultOptions = new RedactionOptions();
 
         /// <summary>
         /// Redacts all secret values in the supplied connection string.
@@ -67,6 +73,20 @@ namespace ConnStringDoctor
         /// <param name="mask">The mask to use when mode is Full.</param>
         /// <returns>The redacted connection string.</returns>
         public static string Redact(string connectionString, RedactionMode mode = RedactionMode.Full, string mask = "****")
+        {
+            // Preserve the original API surface while delegating to the options‑based implementation.
+            var options = new RedactionOptions { Mask = mask };
+            return Redact(connectionString, options, mode);
+        }
+
+        /// <summary>
+        /// Redacts all secret values in the supplied connection string using the supplied options.
+        /// </summary>
+        /// <param name="connectionString">The original connection string.</param>
+        /// <param name="options">Redaction options that control masking and key detection.</param>
+        /// <param name="mode">The redaction mode to use.</param>
+        /// <returns>The redacted connection string.</returns>
+        public static string Redact(string connectionString, RedactionOptions options, RedactionMode mode = RedactionMode.Full)
         {
             if (string.IsNullOrWhiteSpace(connectionString))
                 return connectionString;
@@ -80,10 +100,10 @@ namespace ConnStringDoctor
 
                 foreach (string key in builder.Keys.Cast<string>())
                 {
-                    if (IsSecretKey(key))
+                    if (IsSecretKey(key, options))
                     {
                         var value = builder[key]?.ToString();
-                        builder[key] = RedactValue(value, mode, mask);
+                        builder[key] = RedactValue(value, mode, options);
                     }
                 }
 
@@ -102,8 +122,22 @@ namespace ConnStringDoctor
         /// <param name="connectionString">The original connection string.</param>
         /// <param name="mode">The redaction mode to use.</param>
         /// <param name="mask">The mask to use when mode is Full.</param>
-        /// <returns>A dictionary of keyword->value with sensitive values redacted.</returns>
+        /// <returns>A dictionary of keyword-&gt;value with sensitive values redacted.</returns>
         public static IReadOnlyDictionary<string, string> RedactToDictionary(string connectionString, RedactionMode mode = RedactionMode.Full, string mask = "****")
+        {
+            var options = new RedactionOptions { Mask = mask };
+            return RedactToDictionary(connectionString, options, mode);
+        }
+
+        /// <summary>
+        /// Redacts all secret values in the supplied connection string and returns them as a dictionary,
+        /// using the supplied options.
+        /// </summary>
+        /// <param name="connectionString">The original connection string.</param>
+        /// <param name="options">Redaction options that control masking and key detection.</param>
+        /// <param name="mode">The redaction mode to use.</param>
+        /// <returns>A dictionary of keyword-&gt;value with sensitive values redacted.</returns>
+        public static IReadOnlyDictionary<string, string> RedactToDictionary(string connectionString, RedactionOptions options, RedactionMode mode = RedactionMode.Full)
         {
             var result = new Dictionary<string, string>();
             if (string.IsNullOrWhiteSpace(connectionString))
@@ -119,9 +153,9 @@ namespace ConnStringDoctor
                 foreach (string key in builder.Keys.Cast<string>())
                 {
                     var value = builder[key]?.ToString();
-                    if (IsSecretKey(key))
+                    if (IsSecretKey(key, options))
                     {
-                        result[key] = RedactValue(value, mode, mask);
+                        result[key] = RedactValue(value, mode, options);
                     }
                     else
                     {
@@ -176,6 +210,18 @@ namespace ConnStringDoctor
         /// <returns>True if any secret key is present; otherwise, false.</returns>
         public static bool ContainsSecrets(string connectionString)
         {
+            return ContainsSecrets(connectionString, DefaultOptions);
+        }
+
+        /// <summary>
+        /// Checks whether the supplied connection string contains any secret keys,
+        /// using the supplied options.
+        /// </summary>
+        /// <param name="connectionString">The connection string to inspect.</param>
+        /// <param name="options">Redaction options that control which keys are considered secret.</param>
+        /// <returns>True if any secret key is present; otherwise, false.</returns>
+        public static bool ContainsSecrets(string connectionString, RedactionOptions options)
+        {
             if (string.IsNullOrWhiteSpace(connectionString))
                 return false;
 
@@ -188,7 +234,7 @@ namespace ConnStringDoctor
 
                 foreach (string key in builder.Keys.Cast<string>())
                 {
-                    if (IsSecretKey(key))
+                    if (IsSecretKey(key, options))
                         return true;
                 }
 
@@ -202,22 +248,36 @@ namespace ConnStringDoctor
         }
 
         /// <summary>
-        /// Redacts a single value according to the specified mode.
+        /// Determines whether the specified key is considered a secret key, using the supplied options.
         /// </summary>
-        /// <param name="value">The value to redact.</param>
-        /// <param name="mode">The redaction mode to use.</param>
-        /// <param name="mask">The mask to use when mode is Full.</param>
-        /// <returns>The redacted value.</returns>
-        private static string RedactValue(string value, RedactionMode mode, string mask)
+        private static bool IsSecretKey(string key, RedactionOptions options)
+        {
+            return options.SensitiveKeyPatterns.Any(pattern =>
+                key.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
+        /// <summary>
+        /// Determines whether the specified key is a password key.
+        /// </summary>
+        private static bool IsPasswordKey(string key)
+        {
+            return key.IndexOf("Password", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   key.IndexOf("Pwd", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        /// <summary>
+        /// Redacts a single value according to the specified mode and options.
+        /// </summary>
+        private static string RedactValue(string value, RedactionMode mode, RedactionOptions options)
         {
             if (string.IsNullOrEmpty(value))
                 return value;
 
             return mode switch
             {
-                RedactionMode.Full => mask,
-                RedactionMode.Partial => ApplyPartialRedaction(value, mask),
-                _ => mask
+                RedactionMode.Full => options.Mask,
+                RedactionMode.Partial => ApplyPartialRedaction(value, options.Mask),
+                _ => options.Mask
             };
         }
 
