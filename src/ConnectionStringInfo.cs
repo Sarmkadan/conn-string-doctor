@@ -1,3 +1,5 @@
+#nullable enable
+
 namespace ConnStringDoctor;
 
 /// <summary>
@@ -38,7 +40,7 @@ public class ConnectionStringInfo
     /// <summary>
     /// Gets the collection of additional connection string properties.
     /// </summary>
-    public Dictionary<string, string> Properties { get; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string?> Properties { get; } = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Returns a string representation of the parsed connection string.
