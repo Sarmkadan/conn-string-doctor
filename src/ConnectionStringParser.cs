@@ -227,7 +227,7 @@ public static class ConnectionStringParser
     /// </summary>
     private static string NormalizeKey(string key)
     {
-        return key.ToLowerInvariant().Trim();
+        return key.Trim();
     }
 
     /// <summary>
