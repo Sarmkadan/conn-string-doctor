@@ -172,6 +172,12 @@ public static class ConnectionStringParser
             }
         }
 
+        // If the key is empty after trimming, treat it as an invalid pair.
+        if (string.IsNullOrWhiteSpace(keyPart))
+        {
+            return (null, null);
+        }
+
         return (keyPart, valuePart);
     }
 
