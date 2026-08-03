@@ -1,22 +1,28 @@
+using System;
+using System.Collections.Generic;
 using System.Data.Common;
+using System.Linq;
 
 namespace ConnStringDoctor;
 
 /// <summary>
-/// Converts connection strings between provider dialects (SQL Server, PostgreSQL, MySQL, SQLite)
-/// by translating well-known keywords to their target provider equivalents.
+/// Provides conversion of connection strings between provider dialects (SQL Server, PostgreSQL, MySQL, SQLite).
 /// </summary>
 public sealed class ConnectionStringConverter
 {
     /// <summary>
-    /// Holds the parsed parts of a connection string together with its source provider name.
+    /// Represents the parsed parts of a connection string together with its source provider name.
     /// </summary>
     public sealed class ConnectionStringInfo
     {
-        /// <summary>Gets or sets the source provider name (e.g. "sqlserver", "postgres").</summary>
+        /// <summary>
+        /// Gets or sets the source provider name (e.g. "sqlserver", "postgres").
+        /// </summary>
         public string Provider { get; set; } = string.Empty;
 
-        /// <summary>Gets or sets the original key/value pairs of the connection string.</summary>
+        /// <summary>
+        /// Gets or sets the original key/value pairs of the connection string.
+        /// </summary>
         public IReadOnlyDictionary<string, string> OriginalParts { get; set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     }
 
@@ -61,8 +67,11 @@ public sealed class ConnectionStringConverter
     /// The provider is left empty; set <see cref="ConnectionStringInfo.Provider"/> before converting.
     /// </summary>
     /// <param name="connectionString">The connection string to parse; may be null or empty.</param>
-    /// <param name="info">When this method returns, contains the parsed connection string information if parsing succeeded, or null if parsing failed.</param>
-    /// <returns>true if the connection string was successfully parsed; otherwise, false.</returns>
+    /// <param name="info">
+    /// When this method returns, contains the parsed connection string information if parsing succeeded,
+    /// or <c>null</c> if parsing failed.
+    /// </param>
+    /// <returns><c>true</c> if the connection string was successfully parsed; otherwise, <c>false</c>.</returns>
     public static bool TryParse(string connectionString, out ConnectionStringInfo? info)
     {
         try
@@ -162,8 +171,8 @@ public sealed class ConnectionStringConverter
     /// <param name="source">The parsed source connection string, including its provider name.</param>
     /// <param name="targetProvider">The target provider name (e.g. "postgres", "mysql", "sqlserver").</param>
     /// <returns>The conversion result with the rewritten connection string, unmapped keys, and warnings.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="source"/> is null.</exception>
-    /// <exception cref="ArgumentException"><paramref name="targetProvider"/> is null, empty, or whitespace.</exception>
+    /// <exception cref="ArgumentNullException"><paramref name="source"/> is <c>null</c>.</exception>
+    /// <exception cref="ArgumentException"><paramref name="targetProvider"/> is <c>null</c>, empty, or whitespace.</exception>
     public ConversionResult Convert(ConnectionStringInfo source, string targetProvider)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -295,6 +304,11 @@ public sealed class ConnectionStringConverter
                !IsSqliteProvider(provider);
     }
 
+    /// <summary>
+    /// Applies common fallback mappings for widely shared keywords that provider‑specific mappings did not cover.
+    /// </summary>
+    /// <param name="source">The original parsed connection string information.</param>
+    /// <param name="target">The dictionary that will hold the target connection string parts.</param>
     private static void HandleCommonMappings(ConnectionStringInfo source, Dictionary<string, string> target)
     {
         // Fallbacks for widely shared keywords that the provider-specific mapping did not cover.
@@ -308,6 +322,14 @@ public sealed class ConnectionStringConverter
         AddFallback(source, target, "Encrypt", "Encrypt", "SSL Mode", "SslMode", "Trust Server Certificate");
     }
 
+    /// <summary>
+    /// Adds a fallback mapping for <paramref name="targetKey"/> if none of the supplied <paramref name="synonyms"/>
+    /// are already present in <paramref name="target"/>.
+    /// </summary>
+    /// <param name="source">The original parsed connection string information.</param>
+    /// <param name="target">The dictionary that will hold the target connection string parts.</param>
+    /// <param name="targetKey">The key to add to the target dictionary.</param>
+    /// <param name="synonyms">Possible source keys that can provide a value for <paramref name="targetKey"/>.</param>
     private static void AddFallback(ConnectionStringInfo source, Dictionary<string, string> target, string targetKey, params string[] synonyms)
     {
         if (target.ContainsKey(targetKey) || synonyms.Any(target.ContainsKey))
@@ -325,6 +347,12 @@ public sealed class ConnectionStringConverter
         }
     }
 
+    /// <summary>
+    /// Builds a connection string from the supplied parts using <see cref="DbConnectionStringBuilder"/>
+    /// to apply standard quoting rules.
+    /// </summary>
+    /// <param name="parts">The key/value pairs that constitute the connection string.</param>
+    /// <returns>A properly formatted connection string.</returns>
     private static string BuildConnectionString(Dictionary<string, string> parts)
     {
         if (parts.Count == 0)
@@ -347,33 +375,7 @@ public sealed class ConnectionStringConverter
 /// <summary>
 /// Represents the outcome of a connection string conversion.
 /// </summary>
-/// <summary>
-        Represents the outcome of a connection string conversion.
-    </summary>
-    public sealed class ConversionResult
-    {
-        /// <summary>Gets the converted connection string.</summary>
-        public string ConnectionString { get; }
-
-        /// <summary>Gets the source keys that had no mapping for the target provider.</summary>
-        public IReadOnlyList<string> UnmappedKeys { get; }
-
-        /// <summary>Gets the warnings produced during conversion.</summary>
-        public IReadOnlyList<string> Warnings { get; }
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="ConversionResult"/> class.
-        /// </summary>
-        /// <param name="connectionString">The converted connection string; null is treated as empty.</param>
-        /// <param name="unmappedKeys">The keys that could not be mapped; null is treated as empty.</param>
-        /// <param name="warnings">The conversion warnings; null is treated as empty.</param>
-        public ConversionResult(string connectionString, IReadOnlyList<string> unmappedKeys, IReadOnlyList<string> warnings)
-        {
-            ConnectionString = connectionString ?? string.Empty;
-            UnmappedKeys = unmappedKeys ?? Array.Empty<string>();
-            Warnings = warnings ?? Array.Empty<string>();
-        }
-    }
+public sealed class ConversionResult
 {
     /// <summary>Gets the converted connection string.</summary>
     public string ConnectionString { get; }
@@ -387,9 +389,9 @@ public sealed class ConnectionStringConverter
     /// <summary>
     /// Initializes a new instance of the <see cref="ConversionResult"/> class.
     /// </summary>
-    /// <param name="connectionString">The converted connection string; null is treated as empty.</param>
-    /// <param name="unmappedKeys">The keys that could not be mapped; null is treated as empty.</param>
-    /// <param name="warnings">The conversion warnings; null is treated as empty.</param>
+    /// <param name="connectionString">The converted connection string; <c>null</c> is treated as empty.</param>
+    /// <param name="unmappedKeys">The keys that could not be mapped; <c>null</c> is treated as empty.</param>
+    /// <param name="warnings">The conversion warnings; <c>null</c> is treated as empty.</param>
     public ConversionResult(string connectionString, IReadOnlyList<string> unmappedKeys, IReadOnlyList<string> warnings)
     {
         ConnectionString = connectionString ?? string.Empty;
