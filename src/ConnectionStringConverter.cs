@@ -347,7 +347,33 @@ public sealed class ConnectionStringConverter
 /// <summary>
 /// Represents the outcome of a connection string conversion.
 /// </summary>
-public sealed class ConversionResult
+/// <summary>
+        Represents the outcome of a connection string conversion.
+    </summary>
+    public sealed class ConversionResult
+    {
+        /// <summary>Gets the converted connection string.</summary>
+        public string ConnectionString { get; }
+
+        /// <summary>Gets the source keys that had no mapping for the target provider.</summary>
+        public IReadOnlyList<string> UnmappedKeys { get; }
+
+        /// <summary>Gets the warnings produced during conversion.</summary>
+        public IReadOnlyList<string> Warnings { get; }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ConversionResult"/> class.
+        /// </summary>
+        /// <param name="connectionString">The converted connection string; null is treated as empty.</param>
+        /// <param name="unmappedKeys">The keys that could not be mapped; null is treated as empty.</param>
+        /// <param name="warnings">The conversion warnings; null is treated as empty.</param>
+        public ConversionResult(string connectionString, IReadOnlyList<string> unmappedKeys, IReadOnlyList<string> warnings)
+        {
+            ConnectionString = connectionString ?? string.Empty;
+            UnmappedKeys = unmappedKeys ?? Array.Empty<string>();
+            Warnings = warnings ?? Array.Empty<string>();
+        }
+    }
 {
     /// <summary>Gets the converted connection string.</summary>
     public string ConnectionString { get; }
