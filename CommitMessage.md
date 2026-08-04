@@ -1,0 +1,1 @@
+Fixed bug where TcpClient was not being disposed of properly.
