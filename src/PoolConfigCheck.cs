@@ -12,13 +12,26 @@ namespace ConnStringDoctor;
 /// </summary>
 internal sealed class PoolConfigCheck : IDiagnosticCheck
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// Gets the name of the diagnostic check.
+    /// </summary>
     public string Name => "Pooling";
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Gets the description of the diagnostic check.
+    /// </summary>
     public string Description => "Validates pooling related settings in connection strings";
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Runs the diagnostic check asynchronously on the provided <see cref="ConnectionStringInfo"/>.
+    /// </summary>
+    /// <param name="info">The parsed connection string information to evaluate.</param>
+    /// <param name="ct">A cancellation token that can be used to cancel the operation.</param>
+    /// <returns>
+    /// A <see cref="Task{DiagnosticResult}"/> that resolves to a <see cref="DiagnosticResult"/>
+    /// containing any warnings or errors identified during the check.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="info"/> is <c>null</c>.</exception>
     public Task<DiagnosticResult> RunAsync(ConnectionStringInfo info, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(info);
