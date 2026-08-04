@@ -78,8 +78,16 @@ internal sealed class PoolConfigCheck : IDiagnosticCheck
         {
             maxPoolSize = maxParsed;
 
-            // 2a. MaxPoolSize > 500 -> warning
-            if (maxParsed > 500)
+            // Validate MaxPoolSize
+            if (maxParsed <= 0)
+            {
+                result.AddError("Max Pool Size must be greater than zero.");
+            }
+            else if (maxParsed > 4096)
+            {
+                result.AddWarning($"Max Pool Size is {maxParsed}, which is absurdly high (maximum allowed is 4096).");
+            }
+            else if (maxParsed > 500)
             {
                 result.AddWarning($"Max Pool Size is {maxParsed}, which exceeds the recommended maximum of 500.");
             }
@@ -95,6 +103,16 @@ internal sealed class PoolConfigCheck : IDiagnosticCheck
         if (TryGet(out var minPoolSizeStr, "Min Pool Size", "Minimum Pool Size") && TryParseInt(minPoolSizeStr, out var minParsed))
         {
             minPoolSize = minParsed;
+
+            // Validate MinPoolSize
+            if (minParsed <= 0)
+            {
+                result.AddError("Min Pool Size must be greater than zero.");
+            }
+            else if (minParsed > 4096)
+            {
+                result.AddWarning($"Min Pool Size is {minParsed}, which is absurdly high (maximum allowed is 4096).");
+            }
         }
 
         // 4. MinPoolSize > MaxPoolSize -> error (fail)
