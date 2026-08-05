@@ -39,4 +39,12 @@ public class ConnectionStringParserTests
         Assert.NotNull(result);
         Assert.Equal(256, result.Properties.Count);
     }
+
+    [Fact]
+    public void Parse_ShouldHandleValuesWithEqualsSign()
+    {
+        string connectionString = "Server=localhost;Password=a=b;User Id=admin";
+        var result = ConnectionStringParser.Parse(connectionString);
+        Assert.Equal("a=b", result.Password);
+    }
 }

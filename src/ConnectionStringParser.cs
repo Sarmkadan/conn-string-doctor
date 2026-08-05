@@ -1,5 +1,6 @@
 #nullable enable
 using System.Globalization;
+using System.Text;
 
 namespace ConnStringDoctor;
 
@@ -79,7 +80,7 @@ public static class ConnectionStringParser
     private static List<string> SplitConnectionString(string connectionString)
     {
         var pairs = new List<string>();
-        var current = new System.Text.StringBuilder();
+        var current = new StringBuilder();
         bool inQuotes = false;
         bool inSingleQuotes = false;
         bool escapeNext = false;
