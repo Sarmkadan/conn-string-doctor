@@ -6,6 +6,9 @@ namespace ConnStringDoctor;
 /// <summary>
 /// Database provider types.
 /// </summary>
+/// <summary>
+/// Database provider types.
+/// </summary>
 public enum DbProvider
 {
     /// <summary>
@@ -37,8 +40,14 @@ public enum DbProvider
 /// <summary>
 /// Holds static lookup tables for provider metadata to avoid per‑call dictionary/list construction.
 /// </summary>
+/// <summary>
+/// Holds static lookup tables for provider metadata to avoid per‑call dictionary/list construction.
+/// </summary>
 public static class DbProviderMetadata
 {
+    /// <summary>
+    /// Mapping from provider name (case‑insensitive) to <see cref="DbProvider"/> enum value.
+    /// </summary>
     /// <summary>
     /// Mapping from provider name (case‑insensitive) to <see cref="DbProvider"/> enum value.
     /// </summary>
@@ -53,6 +62,9 @@ public static class DbProviderMetadata
             { "sqlite", DbProvider.Sqlite }
         };
 
+    /// <summary>
+    /// Mapping from <see cref="DbProvider"/> enum value to its canonical provider name.
+    /// </summary>
     /// <summary>
     /// Mapping from <see cref="DbProvider"/> enum value to its canonical provider name.
     /// </summary>
@@ -72,6 +84,12 @@ public static class DbProviderMetadata
     /// <param name="name">The provider name.</param>
     /// <param name="provider">The parsed enum value if successful.</param>
     /// <returns>True if the name could be parsed; otherwise false.</returns>
+    /// <summary>
+    /// Tries to parse a provider name into a <see cref="DbProvider"/> value.
+    /// </summary>
+    /// <param name="name">The provider name.</param>
+    /// <param name="provider">The parsed enum value if successful.</param>
+    /// <returns>True if the name could be parsed; otherwise false.</returns>
     public static bool TryParse(string? name, out DbProvider provider)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -83,6 +101,11 @@ public static class DbProviderMetadata
         return NameToProvider.TryGetValue(name, out provider);
     }
 
+    /// <summary>
+    /// Gets the canonical name for a <see cref="DbProvider"/> value.
+    /// </summary>
+    /// <param name="provider">The provider enum.</param>
+    /// <returns>The canonical provider name, or "unknown" if not found.</returns>
     /// <summary>
     /// Gets the canonical name for a <see cref="DbProvider"/> value.
     /// </summary>
