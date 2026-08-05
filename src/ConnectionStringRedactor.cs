@@ -74,6 +74,8 @@ namespace ConnStringDoctor
         /// <returns>The redacted connection string.</returns>
         public static string Redact(string connectionString, RedactionMode mode = RedactionMode.Full, string mask = "****")
         {
+            ArgumentException.ThrowIfNullOrEmpty(connectionString);
+            ArgumentException.ThrowIfNullOrEmpty(mask);
             // Preserve the original API surface while delegating to the options‑based implementation.
             var options = new RedactionOptions { Mask = mask };
             return Redact(connectionString, options, mode);
@@ -88,8 +90,12 @@ namespace ConnStringDoctor
         /// <returns>The redacted connection string.</returns>
         public static string Redact(string connectionString, RedactionOptions options, RedactionMode mode = RedactionMode.Full)
         {
+            ArgumentException.ThrowIfNullOrEmpty(connectionString);
+            ArgumentNullException.ThrowIfNull(options);
             if (string.IsNullOrWhiteSpace(connectionString))
                 return connectionString;
+            if (string.IsNullOrWhiteSpace(options.Mask))
+                throw new ArgumentException("Mask cannot be null or whitespace.", nameof(options.Mask));
 
             try
             {
@@ -125,6 +131,8 @@ namespace ConnStringDoctor
         /// <returns>A dictionary of keyword-&gt;value with sensitive values redacted.</returns>
         public static IReadOnlyDictionary<string, string> RedactToDictionary(string connectionString, RedactionMode mode = RedactionMode.Full, string mask = "****")
         {
+            ArgumentException.ThrowIfNullOrEmpty(connectionString);
+            ArgumentException.ThrowIfNullOrEmpty(mask);
             var options = new RedactionOptions { Mask = mask };
             return RedactToDictionary(connectionString, options, mode);
         }
@@ -139,6 +147,8 @@ namespace ConnStringDoctor
         /// <returns>A dictionary of keyword-&gt;value with sensitive values redacted.</returns>
         public static IReadOnlyDictionary<string, string> RedactToDictionary(string connectionString, RedactionOptions options, RedactionMode mode = RedactionMode.Full)
         {
+            ArgumentException.ThrowIfNullOrEmpty(connectionString);
+            ArgumentNullException.ThrowIfNull(options);
             var result = new Dictionary<string, string>();
             if (string.IsNullOrWhiteSpace(connectionString))
                 return result;
@@ -177,8 +187,7 @@ namespace ConnStringDoctor
         /// <returns>The connection string with the password redacted.</returns>
         public static string RedactKeepUser(string connectionString)
         {
-            if (string.IsNullOrWhiteSpace(connectionString))
-                return connectionString;
+            ArgumentException.ThrowIfNullOrEmpty(connectionString);
 
             try
             {
