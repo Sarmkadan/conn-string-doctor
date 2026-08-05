@@ -203,7 +203,7 @@ public sealed class ConnectionStringConverter
         foreach (var kvp in source.OriginalParts)
         {
             var key = kvp.Key;
-            var value = kvp.Value;
+            var value = (kvp.Value ?? string.Empty).Trim();
 
             if (mappings.TryGetValue(key, out var targetKey))
             {
