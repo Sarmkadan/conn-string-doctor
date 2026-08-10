@@ -24,12 +24,13 @@ internal sealed class DnsAndTcpCheck : IDiagnosticCheck
         _connectTimeout = connectTimeout ?? TimeSpan.FromSeconds(5);
     }
 
-    /// <inheritdoc />
+    /// <summary>Gets the name of the diagnostic check.</summary>
     public string Name => "Reachability";
 
-        /// <inheritdoc />
+        /// <summary>Gets the description of the diagnostic check.</summary>
         public string Description => "Verifies DNS resolution and TCP reachability of the host";
 
+    /// <inheritdoc />
     /// <inheritdoc />
     public async Task<DiagnosticResult> RunAsync(ConnectionStringInfo info, CancellationToken ct)
     {
