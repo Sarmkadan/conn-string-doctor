@@ -2,47 +2,47 @@
 
 namespace ConnStringDoctor;
 
-/// <summary>
+/// <summary>XML doc comment:
 /// Represents information parsed from a connection string.
 /// </summary>
 public class ConnectionStringInfo
 {
-    /// <summary>
+    /// <summary>XML doc comment:
     /// Gets or sets the database provider type.
     /// </summary>
     public DbProvider Provider { get; set; } = DbProvider.Unknown;
 
-    /// <summary>
+    /// <summary>XML doc comment:
     /// Gets or sets the server/host name.
     /// </summary>
     public string? Server { get; set; }
 
-    /// <summary>
+    /// <summary>XML doc comment:
     /// Gets or sets the port number.
     /// </summary>
     public int? Port { get; set; }
 
-    /// <summary>
+    /// <summary>XML doc comment:
     /// Gets or sets the database name.
     /// </summary>
     public string? Database { get; set; }
 
-    /// <summary>
+    /// <summary>XML doc comment:
     /// Gets or sets the user name.
     /// </summary>
     public string? User { get; set; }
 
-    /// <summary>
+    /// <summary>XML doc comment:
     /// Gets or sets the password.
     /// </summary>
     public string? Password { get; set; }
 
-    /// <summary>
+    /// <summary>XML doc comment:
     /// Gets the collection of additional connection string properties.
     /// </summary>
     public Dictionary<string, string?> Properties { get; } = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>
+    /// <summary>XML doc comment:
     /// Returns a string representation of the parsed connection string.
     /// </summary>
     public override string ToString()
