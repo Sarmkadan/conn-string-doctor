@@ -20,6 +20,14 @@ public sealed class ReachabilityProbe : IDisposable
     private bool _disposed;
 
     /// <summary>
+    /// Invokes the diagnostic log callback if it's not null.
+    /// </summary>
+    private void LogDiagnostic(string messageTemplate, params object?[] args)
+    {
+        DiagnosticLog?.Invoke(messageTemplate, args);
+    }
+
+    /// <summary>
     /// Gets the connection string information being probed.
     /// </summary>
     public ConnectionStringInfo ConnectionStringInfo => _connectionStringInfo;
@@ -33,6 +41,11 @@ public sealed class ReachabilityProbe : IDisposable
     /// Gets the maximum number of retry attempts.
     /// </summary>
     public int MaxAttempts => _maxAttempts;
+
+    /// <summary>
+    /// Optional callback for structured diagnostics.
+    /// </summary>
+    public Action<string, object?[]>? DiagnosticLog { get; set; }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ReachabilityProbe"/> class.
@@ -174,6 +187,7 @@ public sealed class ReachabilityProbe : IDisposable
         {
             // DNS resolution
             var dnsStopwatch = Stopwatch.StartNew();
+            LogDiagnostic("DNS resolution start for {Host}", _connectionStringInfo.Server);
             IPAddress[] addresses;
             try
             {
@@ -183,14 +197,19 @@ public sealed class ReachabilityProbe : IDisposable
             {
                 throw;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                LogDiagnostic("DNS resolution failed for {Host}: {ExceptionType}: {Message}",
+                    _connectionStringInfo.Server, ex.GetType().Name, ex.Message);
                 return ProbeStatus.DnsFailure;
             }
             dnsStopwatch.Stop();
+            LogDiagnostic("DNS resolution finished for {Host}: {ElapsedMs} ms, {AddressCount} addresses resolved",
+                _connectionStringInfo.Server, dnsStopwatch.ElapsedMilliseconds, addresses.Length);
 
             if (addresses.Length == 0)
             {
+                LogDiagnostic("DNS resolution returned no addresses for {Host}", _connectionStringInfo.Server);
                 return ProbeStatus.DnsFailure;
             }
 
@@ -199,9 +218,19 @@ public sealed class ReachabilityProbe : IDisposable
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeoutCts.CancelAfter(_connectTimeout);
 
+            int port = _connectionStringInfo.Port ?? ConnectionStringParser.DefaultPort(_connectionStringInfo.Provider);
+            var endpoint = $"{_connectionStringInfo.Server}:{port}";
+
+            LogDiagnostic("TCP connect attempt to {Endpoint} with timeout {TimeoutMs} ms",
+                endpoint, _connectTimeout.TotalMilliseconds);
+
             try
             {
-                await client.ConnectAsync(_connectionStringInfo.Server, _connectionStringInfo.Port ?? ConnectionStringParser.DefaultPort(_connectionStringInfo.Provider), timeoutCts.Token).ConfigureAwait(false);
+                var connectStopwatch = Stopwatch.StartNew();
+                await client.ConnectAsync(_connectionStringInfo.Server, port, timeoutCts.Token).ConfigureAwait(false);
+                connectStopwatch.Stop();
+                LogDiagnostic("TCP connect to {Endpoint} succeeded after {ElapsedMs} ms",
+                    endpoint, connectStopwatch.ElapsedMilliseconds);
                 return ProbeStatus.Reachable;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -210,23 +239,30 @@ public sealed class ReachabilityProbe : IDisposable
             }
             catch (OperationCanceledException)
             {
+                LogDiagnostic("TCP connect to {Endpoint} timed out after {TimeoutMs} ms",
+                    endpoint, _connectTimeout.TotalMilliseconds);
                 return ProbeStatus.Timeout;
             }
             catch (SocketException ex) when (ex.SocketErrorCode == SocketError.ConnectionRefused)
             {
+                LogDiagnostic("TCP connect to {Endpoint} failed: Connection refused", endpoint);
                 return ProbeStatus.ConnectionRefused;
             }
-            catch (SocketException)
+            catch (SocketException ex)
             {
+                LogDiagnostic("TCP connect to {Endpoint} failed: {SocketError}", endpoint, ex.SocketErrorCode);
                 return ProbeStatus.Timeout;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                LogDiagnostic("TCP connect to {Endpoint} failed: {ExceptionType}: {Message}",
+                    endpoint, ex.GetType().Name, ex.Message);
                 return ProbeStatus.OtherFailure;
             }
         }
         catch (OperationCanceledException)
         {
+            LogDiagnostic("Probe attempt cancelled");
             return ProbeStatus.Timeout;
         }
     }
