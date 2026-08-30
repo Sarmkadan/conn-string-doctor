@@ -65,6 +65,11 @@ internal static class DiagnosticResultHtmlRenderer
         builder.AppendLine();
 
         var allResults = results.ToList();
+        if (allResults.Any(result => result is null))
+        {
+            throw new ArgumentException("The results collection cannot contain null elements.", nameof(results));
+        }
+
         var failedResults = allResults.Where(r => !r.IsSuccess).ToList();
         var successResults = allResults.Where(r => r.IsSuccess).ToList();
 
