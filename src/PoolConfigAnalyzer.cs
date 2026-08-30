@@ -13,10 +13,24 @@ namespace ConnStringDoctor;
 /// </summary>
 public sealed class PoolConfigAnalyzer : IDiagnosticCheck
 {
+    private const int DefaultMinPoolSize = 0; // Providers default to no pre-created pooled connections.
+    private const int DefaultMaxPoolSize = 100; // Common provider default used by the low-timeout diagnostic.
+    private const int LowConnectTimeoutThresholdSeconds = 10; // Below this, pool exhaustion can resemble a timeout.
+
+    private const string PoolingKeyword = "Pooling";
+    private const string DisabledNumericValue = "0";
+    private const string Pool001MessagePrefix = "[POOL-001]";
+
+    private static readonly string[] MaxPoolSizeKeywords = ["Max Pool Size", "Maximum Pool Size"];
+    private static readonly string[] MinPoolSizeKeywords = ["Min Pool Size", "Minimum Pool Size"];
+    private static readonly string[] ConnectTimeoutKeywords = ["Connect Timeout", "Connection Timeout", "Timeout"];
+    private static readonly string[] ConnectionLifetimeKeywords = ["Connection Lifetime"];
+    private static readonly string[] PoolingJustificationKeywords = ["PoolingJustification", "Justification", "Reason"];
+
     /// <summary>
     /// Gets the name of the diagnostic check.
     /// </summary>
-    public string Name => "Pooling";
+    public string Name => PoolingKeyword;
 
     /// <summary>
     /// Gets the description of the diagnostic check.
@@ -63,19 +77,19 @@ public sealed class PoolConfigAnalyzer : IDiagnosticCheck
             return false;
         }
 
-        if (TryGet(out var poolingValue, "Pooling"))
+        if (TryGet(out var poolingValue, PoolingKeyword))
         {
             if (bool.TryParse(poolingValue, out var poolingBool) && !poolingBool)
             {
                 result.AddWarning(
-                    $"[POOL-001] Pooling is explicitly disabled, which prevents connection pooling benefits. " +
+                    $"{Pool001MessagePrefix} Pooling is explicitly disabled, which prevents connection pooling benefits. " +
                     "Remove the Pooling=false setting or provide a justification in a comment if pooling is intentionally disabled for specific reasons."
                 );
             }
-            else if (poolingValue == "0")
+            else if (poolingValue == DisabledNumericValue)
             {
                 result.AddWarning(
-                    $"[POOL-001] Pooling is explicitly disabled with value '0', which prevents connection pooling benefits. " +
+                    $"{Pool001MessagePrefix} Pooling is explicitly disabled with value '0', which prevents connection pooling benefits. " +
                     "Remove the Pooling=0 setting or provide a justification in a comment if pooling is intentionally disabled for specific reasons."
                 );
             }
@@ -105,12 +119,12 @@ public sealed class PoolConfigAnalyzer : IDiagnosticCheck
         int? maxPoolSize = null;
         int? minPoolSize = null;
 
-        if (TryGet(out var maxPoolSizeStr, "Max Pool Size", "Maximum Pool Size") && TryParseInt(maxPoolSizeStr, out var maxParsed))
+        if (TryGet(out var maxPoolSizeStr, MaxPoolSizeKeywords) && TryParseInt(maxPoolSizeStr, out var maxParsed))
         {
             maxPoolSize = maxParsed;
         }
 
-        if (TryGet(out var minPoolSizeStr, "Min Pool Size", "Minimum Pool Size") && TryParseInt(minPoolSizeStr, out var minParsed))
+        if (TryGet(out var minPoolSizeStr, MinPoolSizeKeywords) && TryParseInt(minPoolSizeStr, out var minParsed))
         {
             minPoolSize = minParsed;
         }
@@ -148,12 +162,12 @@ public sealed class PoolConfigAnalyzer : IDiagnosticCheck
         int? connectTimeout = null;
         int? connectionLifetime = null;
 
-        if (TryGet(out var timeoutStr, "Connect Timeout", "Connection Timeout", "Timeout") && TryParseInt(timeoutStr, out var timeout))
+        if (TryGet(out var timeoutStr, ConnectTimeoutKeywords) && TryParseInt(timeoutStr, out var timeout))
         {
             connectTimeout = timeout;
         }
 
-        if (TryGet(out var lifetimeStr, "Connection Lifetime") && TryParseInt(lifetimeStr, out var lifetime))
+        if (TryGet(out var lifetimeStr, ConnectionLifetimeKeywords) && TryParseInt(lifetimeStr, out var lifetime))
         {
             connectionLifetime = lifetime;
         }
@@ -193,26 +207,26 @@ public sealed class PoolConfigAnalyzer : IDiagnosticCheck
         int? maxPoolSize = null;
         int? connectTimeout = null;
 
-        // Check if Max Pool Size is at default value (100)
-        if (TryGet(out var maxPoolSizeStr, "Max Pool Size", "Maximum Pool Size") && TryParseInt(maxPoolSizeStr, out var maxParsed) && maxParsed == 100)
+        // Check if Max Pool Size is at its provider default.
+        if (TryGet(out var maxPoolSizeStr, MaxPoolSizeKeywords) && TryParseInt(maxPoolSizeStr, out var maxParsed) && maxParsed == DefaultMaxPoolSize)
         {
             maxPoolSize = maxParsed;
         }
-        else if (!TryGet(out _, "Max Pool Size", "Maximum Pool Size"))
+        else if (!TryGet(out _, MaxPoolSizeKeywords))
         {
-            // Max Pool Size not specified, so it defaults to 100
-            maxPoolSize = 100;
+            // Max Pool Size not specified, so use the provider default.
+            maxPoolSize = DefaultMaxPoolSize;
         }
 
         // Check Connect Timeout
-        if (TryGet(out var timeoutStr, "Connect Timeout", "Connection Timeout", "Timeout") && TryParseInt(timeoutStr, out var timeout))
+        if (TryGet(out var timeoutStr, ConnectTimeoutKeywords) && TryParseInt(timeoutStr, out var timeout))
         {
             connectTimeout = timeout;
         }
 
         // If Max Pool Size is 100 (default) and Connect Timeout is very low (< 10 seconds),
         // this can masquerade as a pool exhaustion timeout issue
-        if (maxPoolSize == 100 && connectTimeout.HasValue && connectTimeout.Value < 10)
+        if (maxPoolSize == DefaultMaxPoolSize && connectTimeout.HasValue && connectTimeout.Value < LowConnectTimeoutThresholdSeconds)
         {
             result.AddWarning(
                 $"[POOL-004] Max Pool Size is set to default (100) with very low Connect Timeout ({connectTimeout.Value}s), " +
@@ -240,15 +254,15 @@ public sealed class PoolConfigAnalyzer : IDiagnosticCheck
             return false;
         }
 
-        if (TryGet(out var poolingValue, "Pooling") && (bool.TryParse(poolingValue, out var poolingBool) && !poolingBool || poolingValue == "0"))
+        if (TryGet(out var poolingValue, PoolingKeyword) && (bool.TryParse(poolingValue, out var poolingBool) && !poolingBool || poolingValue == DisabledNumericValue))
         {
             // Check if there's a justification key present
-            bool hasJustification = TryGet(out _, "PoolingJustification", "Justification", "Reason");
+            bool hasJustification = TryGet(out _, PoolingJustificationKeywords);
 
             if (!hasJustification)
             {
                 result.AddWarning(
-                    $"[POOL-001] Pooling is disabled without providing a justification. " +
+                    $"{Pool001MessagePrefix} Pooling is disabled without providing a justification. " +
                     "Either remove Pooling=false or add a PoolingJustification key explaining why pooling is disabled. " +
                     "Example: PoolingJustification='Connection pooling disabled due to XA transaction manager limitations'"
                 );
