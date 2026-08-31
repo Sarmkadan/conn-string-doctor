@@ -53,11 +53,6 @@ var showAllOption = new Option<bool>(
     description: "Show all keys including matching ones",
     getDefaultValue: () => false);
 
-var normalizeRedactOption = new Option<bool>(
-    name: "--redact",
-    description: "Redact sensitive information (passwords, tokens, etc.)",
-    getDefaultValue: () => true);
-
 var normalizeConnectionStringOption = new Option<string>(
     name: "--connection-string",
     description: "The connection string to normalize");
@@ -150,13 +145,13 @@ diagnoseCommand.SetHandler(async (context) =>
 
         if (exitCode > 0)
         {
-            Environment.Exit(exitCode);
+            context.ExitCode = exitCode;
         }
     }
     catch (Exception ex)
     {
         Console.Error.WriteLine($"Error: {ex.Message}");
-        Environment.Exit(1);
+        context.ExitCode = 1;
     }
 });
 
@@ -195,14 +190,14 @@ compareCommand.SetHandler((context) =>
     catch (Exception ex)
     {
         Console.Error.WriteLine($"Error: {ex.Message}");
-        Environment.Exit(1);
+        context.ExitCode = 1;
     }
 });
 
 // Create normalize command
 var normalizeCommand = new Command("normalize", "Normalize a connection string with canonical key names, sorted keys, and consistent spacing");
 normalizeCommand.AddOption(normalizeConnectionStringOption);
-normalizeCommand.AddOption(normalizeRedactOption);
+normalizeCommand.AddOption(redactOption);
 normalizeCommand.AddOption(outputOption);
 
 normalizeCommand.SetHandler((context) =>
@@ -210,7 +205,7 @@ normalizeCommand.SetHandler((context) =>
     try
     {
         var connectionString = context.ParseResult.GetValueForOption(normalizeConnectionStringOption) ?? string.Empty;
-        var redact = context.ParseResult.GetValueForOption(normalizeRedactOption);
+        var redact = context.ParseResult.GetValueForOption(redactOption);
         var outputFile = context.ParseResult.GetValueForOption(outputOption);
 
         // Normalize the connection string
@@ -230,7 +225,7 @@ normalizeCommand.SetHandler((context) =>
     catch (Exception ex)
     {
         Console.Error.WriteLine($"Error: {ex.Message}");
-        Environment.Exit(1);
+        context.ExitCode = 1;
     }
 });
 
@@ -273,16 +268,15 @@ listChecksCommand.SetHandler((context) =>
     catch (Exception ex)
     {
         Console.Error.WriteLine($"Error: {ex.Message}");
-        Environment.Exit(1);
+        context.ExitCode = 1;
     }
 });
 
 // Create selftest command
 var selftestCommand = new Command("selftest", "Run built-in self-tests for core components");
-selftestCommand.SetHandler(() =>
+selftestCommand.SetHandler((context) =>
 {
-    var exitCode = RunSelftest();
-    Environment.Exit(exitCode);
+    context.ExitCode = RunSelftest();
 });
 
 // Add subcommands to root
