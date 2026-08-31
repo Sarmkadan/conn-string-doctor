@@ -9,29 +9,32 @@ namespace ConnStringDoctor;
 /// </summary>
 public static class ConnectionStringParser
 {
-    private static readonly HashSet<string> _sqlServerKeywords = new(StringComparer.OrdinalIgnoreCase)
+    private enum FieldKind
     {
-        "server", "data source", "address", "addr", "network address"
-    };
+        Server,
+        Database,
+        User,
+        Password,
+        Port
+    }
 
-    private static readonly HashSet<string> _databaseKeywords = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, FieldKind> _keywordFieldKinds = new(StringComparer.OrdinalIgnoreCase)
     {
-        "initial catalog", "database", "db"
-    };
-
-    private static readonly HashSet<string> _userKeywords = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "user id", "uid", "user", "username"
-    };
-
-    private static readonly HashSet<string> _passwordKeywords = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "password", "pwd"
-    };
-
-    private static readonly HashSet<string> _portKeywords = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "port"
+        ["server"] = FieldKind.Server,
+        ["data source"] = FieldKind.Server,
+        ["address"] = FieldKind.Server,
+        ["addr"] = FieldKind.Server,
+        ["network address"] = FieldKind.Server,
+        ["initial catalog"] = FieldKind.Database,
+        ["database"] = FieldKind.Database,
+        ["db"] = FieldKind.Database,
+        ["user id"] = FieldKind.User,
+        ["uid"] = FieldKind.User,
+        ["user"] = FieldKind.User,
+        ["username"] = FieldKind.User,
+        ["password"] = FieldKind.Password,
+        ["pwd"] = FieldKind.Password,
+        ["port"] = FieldKind.Port
     };
 
     private const int MaxConnectionStringLength = 8192;
@@ -191,42 +194,36 @@ public static class ConnectionStringParser
         // Normalize key
         string normalizedKey = NormalizeKey(key);
 
-        // Handle server/host
-        if (_sqlServerKeywords.Contains(normalizedKey))
-        {
-            result.Server = ExtractHostAndPort(value, out int? port);
-            if (port.HasValue)
-            {
-                result.Port = port.Value;
-            }
-        }
-        // Handle database/initial catalog
-        else if (_databaseKeywords.Contains(normalizedKey))
-        {
-            result.Database = value;
-        }
-        // Handle user
-        else if (_userKeywords.Contains(normalizedKey))
-        {
-            result.User = value;
-        }
-        // Handle password
-        else if (_passwordKeywords.Contains(normalizedKey))
-        {
-            result.Password = value;
-        }
-        // Handle port explicitly
-        else if (_portKeywords.Contains(normalizedKey))
-        {
-            if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int port))
-            {
-                result.Port = port;
-            }
-        }
-        // Handle other properties
-        else
+        if (!_keywordFieldKinds.TryGetValue(normalizedKey, out FieldKind fieldKind))
         {
             result.Properties[key] = value;
+            return;
+        }
+
+        switch (fieldKind)
+        {
+            case FieldKind.Server:
+                result.Server = ExtractHostAndPort(value, out int? port);
+                if (port.HasValue)
+                {
+                    result.Port = port.Value;
+                }
+                break;
+            case FieldKind.Database:
+                result.Database = value;
+                break;
+            case FieldKind.User:
+                result.User = value;
+                break;
+            case FieldKind.Password:
+                result.Password = value;
+                break;
+            case FieldKind.Port:
+                if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int explicitPort))
+                {
+                    result.Port = explicitPort;
+                }
+                break;
         }
     }
 
