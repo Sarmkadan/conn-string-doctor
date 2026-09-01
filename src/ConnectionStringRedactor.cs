@@ -34,8 +34,8 @@ namespace ConnStringDoctor
         public string Mask { get; set; } = "****";
 
         /// <summary>
-        /// When true, the redacted value will keep the original length (by padding the mask).
-        /// This flag is currently not used by the existing logic but is provided for future extensions.
+        /// When true, full redaction repeats the mask character to preserve the original value length,
+        /// and partial redaction masks the middle characters while preserving the first 2 and last 2.
         /// </summary>
         public bool KeepLength { get; set; } = false;
 
@@ -284,8 +284,10 @@ namespace ConnStringDoctor
 
             return mode switch
             {
-                RedactionMode.Full => options.Mask,
-                RedactionMode.Partial => ApplyPartialRedaction(value, options.Mask),
+                RedactionMode.Full => options.KeepLength
+                    ? new string(options.Mask[0], value.Length)
+                    : options.Mask,
+                RedactionMode.Partial => ApplyPartialRedaction(value, options),
                 _ => options.Mask
             };
         }
@@ -294,15 +296,20 @@ namespace ConnStringDoctor
         /// Applies partial redaction to a value, keeping first 2 and last 2 characters visible.
         /// </summary>
         /// <param name="value">The value to redact.</param>
-        /// <param name="mask">The mask string to use between the visible characters.</param>
+        /// <param name="options">The redaction options to apply.</param>
         /// <returns>The partially redacted value.</returns>
-        private static string ApplyPartialRedaction(string value, string mask)
+        private static string ApplyPartialRedaction(string value, RedactionOptions options)
         {
             if (string.IsNullOrEmpty(value) || value.Length <= 4)
-                return mask;
+                return options.KeepLength
+                    ? new string(options.Mask[0], value.Length)
+                    : options.Mask;
 
             var first2 = value[..2];
             var last2 = value[^2..];
+            var mask = options.KeepLength
+                ? new string(options.Mask[0], value.Length - 4)
+                : options.Mask;
             return $"{first2}{mask}{last2}";
         }
     }
