@@ -1,6 +1,4 @@
 using System.CommandLine;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using ConnStringDoctor;
 
 var rootCommand = new RootCommand("Connection String Doctor - Diagnoses connection strings for common issues and compares them");
@@ -105,7 +103,7 @@ diagnoseCommand.SetHandler(async (context) =>
         string output;
         if (format.Equals("json", StringComparison.OrdinalIgnoreCase))
         {
-            output = FormatAsJson(results, includeSuccess);
+            output = results.ToJson(includeSuccess);
         }
         else if (format.Equals("markdown", StringComparison.OrdinalIgnoreCase))
         {
@@ -329,31 +327,6 @@ static string FormatAsText(List<DiagnosticResult> results, bool includeSuccess)
     }
 
     return builder.ToString();
-}
-
-static string FormatAsJson(List<DiagnosticResult> results, bool includeSuccess)
-{
-    var options = new JsonSerializerOptions
-    {
-        WriteIndented = true,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = includeSuccess ? JsonIgnoreCondition.WhenWritingNull : JsonIgnoreCondition.Never
-    };
-
-    var jsonResults = results
-        .Where(r => includeSuccess || !r.IsSuccess)
-        .Select(r => new
-        {
-            name = r.Name,
-            severity = r.ResultSeverity.ToString().ToLowerInvariant(),
-            message = r.Message,
-            isSuccess = r.IsSuccess,
-            errors = r.Errors.Count > 0 ? r.Errors.ToArray() : null,
-            warnings = r.Warnings.Count > 0 ? r.Warnings.ToArray() : null
-        })
-        .ToArray();
-
-    return JsonSerializer.Serialize(jsonResults, options);
 }
 
 static int RunSelftest()
