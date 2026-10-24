@@ -15,12 +15,12 @@ public static class ProviderDetector
 
     private static readonly HashSet<string> _postgresKeywords = new(StringComparer.OrdinalIgnoreCase)
     {
-        "host", "server", "port", "database", "dbname", "ssl mode"
+        "host", "port", "dbname", "ssl mode"
     };
 
     private static readonly HashSet<string> _mysqlKeywords = new(StringComparer.OrdinalIgnoreCase)
     {
-        "server", "host", "port", "database", "db", "user", "username"
+        "host", "port", "db", "user", "username"
     };
 
     private static readonly HashSet<string> _sqliteKeywords = new(StringComparer.OrdinalIgnoreCase)
@@ -45,8 +45,8 @@ public static class ProviderDetector
         _keywordToProviderMap["sslmode"] = (DbProvider.PostgreSql, 100);
 
         // MySQL specific keywords
-        _keywordToProviderMap["user"] = (DbProvider.MySql, 80);
-        _keywordToProviderMap["username"] = (DbProvider.MySql, 80);
+        _keywordToProviderMap["user"] = (DbProvider.MySql, 85);
+        _keywordToProviderMap["username"] = (DbProvider.MySql, 85);
         _keywordToProviderMap["db"] = (DbProvider.MySql, 70);
     }
 
@@ -211,28 +211,8 @@ public static class ProviderDetector
             }
         }
 
-        // Check for SQLite by file extension
-        if (result.Properties.TryGetValue("server", out var server) &&
-            _sqliteKeywords.Any(ext => server.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
-        {
-            return (DbProvider.Sqlite, 100);
-        }
-
-        // Also check if database/server field contains file extension
-        if (result.Properties.TryGetValue("database", out var database) &&
-            _sqliteKeywords.Any(ext => database.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
-        {
-            return (DbProvider.Sqlite, 100);
-        }
-
-        // Check for SQLite by file extension (highest priority)
-        if (result.Properties.TryGetValue("server", out var serverValue) &&
-            _sqliteKeywords.Any(ext => serverValue.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
-        {
-            return (DbProvider.Sqlite, 100);
-        }
-        if (result.Properties.TryGetValue("database", out var databaseValue) &&
-            _sqliteKeywords.Any(ext => databaseValue.EndsWith(ext, StringComparison.OrdinalIgnoreCase)))
+        // Check for SQLite by file extension on any value (e.g. "Data Source=/path/app.db")
+        if (result.Properties.ContainsKey("__sqlite_file_seen"))
         {
             return (DbProvider.Sqlite, 100);
         }
