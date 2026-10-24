@@ -3,6 +3,19 @@ namespace ConnStringDoctor
     /// <summary>
     /// Provides validation helpers for the <see cref="FluentConnectionStringBuilder"/> type.
     /// </summary>
+    /// <remarks>
+    /// Server, port, database, credential, and pool-size rules are shared with <see cref="ConnectionStringInfoValidation"/>.
+    /// The builder differs from parsed connection strings in these intentional ways:
+    /// <list type="bullet">
+    /// <item><description>Credentials and database are required only when integrated security is off. SQLite always requires a database path.</description></item>
+    /// <item><description>A password is required when integrated security is off. <see cref="ConnectionStringInfoValidation"/> does not check passwords.</description></item>
+    /// <item><description>Pool sizes and timeout are checked, because the builder models them as typed fields.</description></item>
+    /// <item><description>Setter methods such as <c>WithHost</c> and <c>WithTimeout</c> reject empty or non-positive input eagerly.
+    /// Validation reports the same conditions as problems in the in-progress state, so a builder can be inspected before the state is complete.
+    /// Out-of-range port numbers are reported here rather than thrown by <c>WithHost</c>.</description></item>
+    /// <item><description>Build-time failures from <see cref="FluentConnectionStringBuilder.Build"/> are reported as problems, except argument exceptions, which propagate.</description></item>
+    /// </list>
+    /// </remarks>
     public static class FluentConnectionStringBuilderValidation
     {
         /// <summary>
@@ -15,70 +28,35 @@ namespace ConnStringDoctor
         {
             ArgumentNullException.ThrowIfNull(value);
 
-            var problems = new List<string>();
-
-            // Validate provider
-            if (string.IsNullOrWhiteSpace(value._provider))
+            var isSqlite = value._provider?.ToLowerInvariant() is "sqlite" or "sqlitepclraw";
+            var problems = new List<string?>
             {
-                problems.Add("Provider cannot be null or whitespace.");
-            }
+                string.IsNullOrWhiteSpace(value._provider) ? "Provider cannot be null or whitespace." : null,
+                ConnectionStringFieldValidation.ServerProblem(value._host),
+                ConnectionStringFieldValidation.PortProblem(value._port),
+                ConnectionStringFieldValidation.DatabaseProblem(value._database, required: !value._integratedSecurity || isSqlite),
+                ConnectionStringFieldValidation.UserProblem(value._user, required: !value._integratedSecurity),
+                ConnectionStringFieldValidation.PasswordProblem(value._password, required: !value._integratedSecurity),
+                value._integratedSecurity && (!string.IsNullOrEmpty(value._user) || !string.IsNullOrEmpty(value._password))
+                    ? "Conflicting options: integrated security is enabled but credentials are also configured."
+                    : null,
+                ConnectionStringFieldValidation.MinPoolSizeProblem(value._poolingMin),
+                ConnectionStringFieldValidation.PoolSizeRangeProblem(value._poolingMin, value._poolingMax),
+                ConnectionStringFieldValidation.TimeoutProblem(value._timeout),
+            };
 
-            // Validate required fields based on provider type
-            switch (value._provider?.ToLowerInvariant())
-            {
-                case "sqlite" or "sqlitepclraw":
-                    if (string.IsNullOrWhiteSpace(value._database))
-                    {
-                        problems.Add("SQLite connection string requires a database path.");
-                    }
-                    break;
-            }
+            var result = problems.OfType<string>().ToList();
 
-            // Validate credentials consistency
-            if (!value._integratedSecurity && string.IsNullOrWhiteSpace(value._user))
-            {
-                problems.Add("User credentials must be provided when integrated security is disabled.");
-            }
-
-            if (!value._integratedSecurity && string.IsNullOrWhiteSpace(value._password))
-            {
-                problems.Add("Password must be provided when user credentials are configured.");
-            }
-
-            // Validate pooling configuration
-            if (value._poolingMin.HasValue && value._poolingMax.HasValue && value._poolingMin.Value < 0)
-            {
-                problems.Add("Minimum pool size cannot be negative.");
-            }
-
-            if (value._poolingMin.HasValue && value._poolingMax.HasValue && value._poolingMax.Value < value._poolingMin.Value)
-            {
-                problems.Add("Maximum pool size cannot be less than minimum pool size.");
-            }
-
-            // Validate timeout
-            if (value._timeout.HasValue && value._timeout.Value <= 0)
-            {
-                problems.Add("Timeout must be a positive integer.");
-            }
-
-            // Validate port if specified
-            if (value._port.HasValue && value._port.Value <= 0)
-            {
-                problems.Add("Port must be a positive integer.");
-            }
-
-            // Final validation: attempt to build and catch any build-time exceptions
             try
             {
                 value.Build();
             }
             catch (Exception ex) when (ex is not ArgumentException and not ArgumentNullException)
             {
-                problems.Add(ex.Message);
+                result.Add(ex.Message);
             }
 
-            return problems;
+            return result;
         }
 
         /// <summary>
@@ -90,7 +68,7 @@ namespace ConnStringDoctor
         public static bool IsValid(this FluentConnectionStringBuilder value)
         {
             ArgumentNullException.ThrowIfNull(value);
-            return value.Validate().Count == 0;
+            return Validate(value).Count == 0;
         }
 
         /// <summary>
@@ -103,11 +81,11 @@ namespace ConnStringDoctor
         {
             ArgumentNullException.ThrowIfNull(value);
 
-            var problems = value.Validate();
+            var problems = Validate(value);
 
             if (problems.Count > 0)
             {
-                throw new ArgumentException(string.Join(Environment.NewLine, problems), nameof(value));
+                throw new ArgumentException($"Invalid FluentConnectionStringBuilder: {string.Join(", ", problems)}", nameof(value));
             }
         }
     }

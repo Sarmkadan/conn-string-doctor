@@ -3,6 +3,19 @@ namespace ConnStringDoctor
     /// <summary>
     /// Provides validation methods for <see cref="ConnectionStringInfo"/> instances.
     /// </summary>
+    /// <remarks>
+    /// Server, port, and database are checked with the same per-field rules as
+    /// <see cref="FluentConnectionStringBuilderValidation"/>. The following differences are intentional:
+    /// <list type="bullet">
+    /// <item><description>The user is always required here. <see cref="ConnectionStringInfo"/> does not model integrated security,
+    /// so a parsed Windows-authentication string without a user is reported; the builder only requires a user when integrated security is off.</description></item>
+    /// <item><description>The password is not checked here, because parsed connection strings may legitimately omit it.
+    /// The builder requires one whenever integrated security is off.</description></item>
+    /// <item><description>Pooling and timeout values are not checked here, because <see cref="ConnectionStringInfo"/> keeps them in
+    /// <see cref="ConnectionStringInfo.Properties"/>. Use <c>PoolConfigCheck</c> and <c>TimeoutSanityCheck</c> for those.</description></item>
+    /// <item><description>Provider validity is checked against <see cref="DbProvider.Unknown"/>, not against a provider name string.</description></item>
+    /// </list>
+    /// </remarks>
     public static class ConnectionStringInfoValidation
     {
         /// <summary>
@@ -15,45 +28,23 @@ namespace ConnStringDoctor
         {
             ArgumentNullException.ThrowIfNull(value);
 
-            var problems = new List<string>();
-
-            if (value.Provider == DbProvider.Unknown)
+            var problems = new List<string?>
             {
-                problems.Add("Provider is Unknown");
-            }
-
-            if (string.IsNullOrEmpty(value.Server))
-            {
-                problems.Add("Server is null or empty");
-            }
-
-            if (value.Port.HasValue && (value.Port is < 1 or > 65535))
-            {
-                problems.Add("Port is out of range (1-65535)");
-            }
-
-            if (string.IsNullOrEmpty(value.Database))
-            {
-                problems.Add("Database is null or empty");
-            }
-
-            if (string.IsNullOrEmpty(value.User))
-            {
-                problems.Add("User is null or empty");
-            }
+                value.Provider == DbProvider.Unknown ? "Provider is Unknown" : null,
+                ConnectionStringFieldValidation.ServerProblem(value.Server),
+                ConnectionStringFieldValidation.PortProblem(value.Port),
+                ConnectionStringFieldValidation.DatabaseProblem(value.Database),
+                ConnectionStringFieldValidation.UserProblem(value.User),
+            };
 
             if (value.Properties is not null)
             {
-                foreach (var property in value.Properties)
-                {
-                    if (string.IsNullOrEmpty(property.Key) || string.IsNullOrEmpty(property.Value))
-                    {
-                        problems.Add($"Property key or value is null or empty: {property.Key}={property.Value}");
-                    }
-                }
+                problems.AddRange(value.Properties
+                    .Where(property => string.IsNullOrEmpty(property.Key) || string.IsNullOrEmpty(property.Value))
+                    .Select(property => $"Property key or value is null or empty: {property.Key}={property.Value}"));
             }
 
-            return problems.AsReadOnly();
+            return problems.OfType<string>().ToList().AsReadOnly();
         }
 
         /// <summary>
@@ -82,7 +73,7 @@ namespace ConnStringDoctor
 
             if (problems.Count > 0)
             {
-                throw new ArgumentException($"Invalid ConnectionStringInfo instance: {string.Join(", ", problems)}");
+                throw new ArgumentException($"Invalid ConnectionStringInfo: {string.Join(", ", problems)}", nameof(value));
             }
         }
     }
