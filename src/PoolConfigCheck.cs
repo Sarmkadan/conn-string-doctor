@@ -104,10 +104,10 @@ internal sealed class PoolConfigCheck : IDiagnosticCheck
         {
             minPoolSize = minParsed;
 
-            // Validate MinPoolSize
-            if (minParsed <= 0)
+            // Validate MinPoolSize (0 is valid and is the provider default)
+            if (minParsed < 0)
             {
-                result.AddError("Min Pool Size must be greater than zero.");
+                result.AddError("Min Pool Size must not be negative.");
             }
             else if (minParsed > 4096)
             {
