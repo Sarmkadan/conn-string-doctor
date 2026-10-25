@@ -46,8 +46,7 @@ internal sealed class DnsAndTcpCheck : IDiagnosticCheck
 
         if (string.IsNullOrWhiteSpace(info.Server))
         {
-            result.AddError("Server/host is not specified.");
-            return result;
+            return DiagnosticResult.Error(Name, "Server/host is not specified.");
         }
 
         // DNS resolution with timing
@@ -63,15 +62,13 @@ internal sealed class DnsAndTcpCheck : IDiagnosticCheck
         }
         catch (Exception ex)
         {
-            result.AddError($"DNS resolution failed: {ex.Message}");
-            return result;
+            return DiagnosticResult.Error(Name, $"DNS resolution failed: {ex.Message}");
         }
         dnsStopwatch.Stop();
 
         if (addresses.Length == 0)
         {
-            result.AddError($"DNS resolution returned no addresses for '{info.Server}'.");
-            return result;
+            return DiagnosticResult.Error(Name, $"DNS resolution returned no addresses for '{info.Server}'.");
         }
 
         if (dnsStopwatch.Elapsed > TimeSpan.FromSeconds(1))
@@ -83,8 +80,7 @@ internal sealed class DnsAndTcpCheck : IDiagnosticCheck
         int port = info.Port ?? ConnectionStringParser.DefaultPort(info.Provider);
         if (port <= 0)
         {
-            result.AddWarning("No port specified and no default port is known for the provider; skipping TCP check.");
-            return result;
+            return DiagnosticResult.Warning(Name, "No port specified and no default port is known for the provider; skipping TCP check.");
         }
 
         // TCP connection with timeout

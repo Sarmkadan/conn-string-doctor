@@ -44,30 +44,26 @@ internal sealed class TlsInspector : IDiagnosticCheck
         // SQLite is file based; there is nothing to connect to via TLS
         if (info.Provider == DbProvider.Sqlite)
         {
-            result.SetMessage("SQLite is file-based; TLS inspection not applicable.");
-            return result;
+            return DiagnosticResult.Info(Name, "SQLite is file-based; TLS inspection not applicable.");
         }
 
         if (string.IsNullOrWhiteSpace(info.Server))
         {
-            result.AddError("Server/host is not specified.");
-            return result;
+            return DiagnosticResult.Error(Name, "Server/host is not specified.");
         }
 
         // Determine port - default to standard TLS ports based on provider
         int port = info.Port ?? GetDefaultTlsPort(info.Provider);
         if (port <= 0)
         {
-            result.AddError("No port specified and no default TLS port is known for the provider.");
-            return result;
+            return DiagnosticResult.Error(Name, "No port specified and no default TLS port is known for the provider.");
         }
 
         // Check if encryption is explicitly disabled
         bool encryptEnabled = IsEncryptionEnabled(info);
         if (!encryptEnabled)
         {
-            result.AddWarning("Encryption is disabled (Encrypt=false or not specified). TLS inspection skipped.");
-            return result;
+            return DiagnosticResult.Warning(Name, "Encryption is disabled (Encrypt=false or not specified). TLS inspection skipped.");
         }
 
         // Perform TLS handshake and certificate validation
