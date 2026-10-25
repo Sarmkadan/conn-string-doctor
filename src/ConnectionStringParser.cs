@@ -1,4 +1,5 @@
 #nullable enable
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 
@@ -48,18 +49,47 @@ public static class ConnectionStringParser
     /// <exception cref="ArgumentException">Thrown when the connection string is null, empty, exceeds maximum length, or contains too many key-value pairs.</exception>
     public static ConnectionStringInfo Parse(string connectionString)
     {
+        if (!TryParse(connectionString, out var result, out var error))
+        {
+            throw new ArgumentException(error, nameof(connectionString));
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Attempts to parse a connection string without throwing.
+    /// </summary>
+    /// <param name="connectionString">The connection string to parse (e.g., "Server=localhost;Database=test;User Id=admin")</param>
+    /// <param name="result">The parsed information when parsing succeeds; otherwise <c>null</c>.</param>
+    /// <param name="error">An empty string when parsing succeeds; otherwise a description of why the connection string was rejected.</param>
+    /// <returns><c>true</c> if the connection string was parsed; otherwise <c>false</c>.</returns>
+    public static bool TryParse(
+        string connectionString,
+        [NotNullWhen(true)] out ConnectionStringInfo? result,
+        out string error)
+    {
         if (string.IsNullOrWhiteSpace(connectionString))
         {
-            throw new ArgumentException("Connection string cannot be null or empty", nameof(connectionString));
+            result = null;
+            error = "Connection string cannot be null or empty";
+            return false;
         }
 
         if (connectionString.Length > MaxConnectionStringLength)
         {
-            throw new ArgumentException($"Connection string exceeds maximum length of {MaxConnectionStringLength} characters.", nameof(connectionString));
+            result = null;
+            error = $"Connection string exceeds maximum length of {MaxConnectionStringLength} characters.";
+            return false;
         }
 
-        var result = new ConnectionStringInfo();
-        var pairs = SplitConnectionString(connectionString);
+        if (!TrySplitConnectionString(connectionString, out var pairs, out error))
+        {
+            result = null;
+            return false;
+        }
+
+        var info = new ConnectionStringInfo();
 
         foreach (var pair in pairs)
         {
@@ -69,20 +99,23 @@ public static class ConnectionStringParser
                 continue;
             }
 
-            ProcessKeyValue(result, key, value);
+            ProcessKeyValue(info, key, value);
         }
 
-        DetermineProvider(result);
-        return result;
+        DetermineProvider(info);
+        result = info;
+        error = string.Empty;
+        return true;
     }
 
     /// <summary>
     /// Splits a connection string into key=value pairs, handling quoted values and escaped semicolons.
+    /// Returns <c>false</c> with an error message when the connection string contains too many key-value pairs.
     /// </summary>
-    /// <exception cref="ArgumentException">Thrown when the connection string contains too many key-value pairs.</exception>
-    private static List<string> SplitConnectionString(string connectionString)
+    private static bool TrySplitConnectionString(string connectionString, out List<string> pairs, out string error)
     {
-        var pairs = new List<string>();
+        pairs = new List<string>();
+        error = string.Empty;
         var current = new StringBuilder();
         bool inQuotes = false;
         bool inSingleQuotes = false;
@@ -126,7 +159,8 @@ public static class ConnectionStringParser
                 {
                     if (pairs.Count >= MaxKeyValuePairCount)
                     {
-                        throw new ArgumentException($"Connection string exceeds maximum of {MaxKeyValuePairCount} key-value pairs.", nameof(connectionString));
+                        error = $"Connection string exceeds maximum of {MaxKeyValuePairCount} key-value pairs.";
+                        return false;
                     }
                     pairs.Add(pair);
                 }
@@ -143,12 +177,13 @@ public static class ConnectionStringParser
         {
             if (pairs.Count >= MaxKeyValuePairCount)
             {
-                throw new ArgumentException($"Connection string exceeds maximum of {MaxKeyValuePairCount} key-value pairs.", nameof(connectionString));
+                error = $"Connection string exceeds maximum of {MaxKeyValuePairCount} key-value pairs.";
+                return false;
             }
             pairs.Add(lastPair);
         }
 
-        return pairs;
+        return true;
     }
 
     /// <summary>

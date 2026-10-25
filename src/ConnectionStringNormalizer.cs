@@ -85,7 +85,10 @@ public static class ConnectionStringNormalizer
         }
 
         // Parse the connection string using the existing parser
-        var parsed = ConnectionStringParser.Parse(connectionString);
+        if (!ConnectionStringParser.TryParse(connectionString, out var parsed, out var parseError))
+        {
+            throw new ArgumentException(parseError, nameof(connectionString));
+        }
 
         // Build a dictionary of key-value pairs with canonical keys
         var normalizedParts = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
