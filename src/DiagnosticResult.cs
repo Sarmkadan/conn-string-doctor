@@ -42,6 +42,48 @@ public sealed class DiagnosticResult
     }
 
     /// <summary>
+    /// Creates an informational result with the given message.
+    /// </summary>
+    /// <param name="checkName">Name of the diagnostic check.</param>
+    /// <param name="message">The informational message.</param>
+    /// <param name="recommendation">Optional recommendation appended to the message.</param>
+    /// <returns>A result with <see cref="Severity.Info"/> severity.</returns>
+    public static DiagnosticResult Info(string checkName, string message, string? recommendation = null)
+    {
+        var result = new DiagnosticResult(checkName);
+        result.SetMessage(Compose(message, recommendation));
+        return result;
+    }
+
+    /// <summary>
+    /// Creates a result containing a single warning.
+    /// </summary>
+    /// <param name="checkName">Name of the diagnostic check.</param>
+    /// <param name="message">The warning message.</param>
+    /// <param name="recommendation">Optional recommendation appended to the warning.</param>
+    /// <returns>A result with <see cref="Severity.Warning"/> severity.</returns>
+    public static DiagnosticResult Warning(string checkName, string message, string? recommendation = null)
+    {
+        var result = new DiagnosticResult(checkName);
+        result.AddWarning(Compose(message, recommendation));
+        return result;
+    }
+
+    /// <summary>
+    /// Creates a result containing a single error.
+    /// </summary>
+    /// <param name="checkName">Name of the diagnostic check.</param>
+    /// <param name="message">The error message.</param>
+    /// <param name="recommendation">Optional recommendation appended to the error.</param>
+    /// <returns>A result with <see cref="Severity.Error"/> severity.</returns>
+    public static DiagnosticResult Error(string checkName, string message, string? recommendation = null)
+    {
+        var result = new DiagnosticResult(checkName);
+        result.AddError(Compose(message, recommendation));
+        return result;
+    }
+
+    /// <summary>
     /// Gets the name of the diagnostic check.
     /// </summary>
     public string Name { get; }
@@ -131,6 +173,19 @@ public sealed class DiagnosticResult
     public void SetSeverity(Severity severity)
     {
         _severity = severity;
+    }
+
+    /// <summary>
+    /// Joins a message and an optional recommendation into a single line of text.
+    /// </summary>
+    private static string Compose(string message, string? recommendation)
+    {
+        if (message is null)
+        {
+            throw new ArgumentNullException(nameof(message));
+        }
+
+        return string.IsNullOrWhiteSpace(recommendation) ? message : $"{message} {recommendation}";
     }
 
     /// <summary>
