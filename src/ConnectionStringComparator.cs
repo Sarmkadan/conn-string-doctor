@@ -27,8 +27,15 @@ public static class ConnectionStringComparator
 		var normalizedB = ConnectionStringNormalizer.Normalize(connectionStringB, redact);
 
 		// Parse both connection strings for metadata
-		var infoA = ConnectionStringParser.Parse(connectionStringA);
-		var infoB = ConnectionStringParser.Parse(connectionStringB);
+		if (!ConnectionStringParser.TryParse(connectionStringA, out var infoA, out var errorA))
+		{
+			throw new ArgumentException(errorA, nameof(connectionStringA));
+		}
+
+		if (!ConnectionStringParser.TryParse(connectionStringB, out var infoB, out var errorB))
+		{
+			throw new ArgumentException(errorB, nameof(connectionStringB));
+		}
 
 		// Parse normalized strings to dictionaries for comparison
 		var dictA = ParseToDictionary(normalizedA);
